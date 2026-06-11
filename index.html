@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador de Contrato de Arrendamiento</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
+header{background:#1a1a1a;color:#fff;padding:1.25rem 2rem;display:flex;align-items:center;gap:.75rem}
+header svg{width:24px;height:24px;opacity:.8}
+header h1{font-size:1rem;font-weight:500;letter-spacing:.01em}
+.container{max-width:1100px;margin:0 auto;padding:2rem;display:grid;grid-template-columns:360px 1fr;gap:2rem;align-items:start}
+.form-panel{background:#fff;border-radius:12px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.preview-panel{background:#fff;border-radius:12px;padding:2rem;box-shadow:0 1px 3px rgba(0,0,0,.08);position:sticky;top:2rem}
+.section-label{font-size:10.5px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.1em;margin:1.5rem 0 .75rem;padding-bottom:.4rem;border-bottom:1px solid #f0f0f0}
+.section-label:first-child{margin-top:0}
+.field{margin-bottom:.875rem}
+.field label{display:block;font-size:12px;color:#555;margin-bottom:4px;font-weight:500}
+.field input,.field textarea{width:100%;font-size:13px;padding:7px 10px;border-radius:7px;border:1px solid #e0e0e0;background:#fafafa;color:#1a1a1a;outline:none;transition:border .15s,box-shadow .15s}
+.field input:focus,.field textarea:focus{border-color:#1a1a1a;background:#fff;box-shadow:0 0 0 3px rgba(26,26,26,.06)}
+.field textarea{resize:vertical;min-height:72px}
+.fields-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid #f5f5f5}
+.toggle-row:last-of-type{border-bottom:none}
+.toggle-row span{font-size:13px;color:#1a1a1a}
+.toggle{position:relative;width:38px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;inset:0;background:#d0d0d0;border-radius:22px;transition:.2s}
+.slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked+.slider{background:#1D9E75}
+.toggle input:checked+.slider:before{transform:translateX(16px)}
+.sub-fields{background:#f9f9f9;border-radius:8px;padding:.875rem;margin-top:.5rem}
+.email-section{background:#fffbf0;border:1px solid #f0e0a0;border-radius:8px;padding:1rem;margin-top:1rem}
+.email-section p{font-size:12px;color:#8a6a00;margin-bottom:.75rem}
+.btn-send{width:100%;padding:10px;font-size:13.5px;font-weight:600;background:#1a1a1a;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:1.25rem;transition:background .15s,transform .1s}
+.btn-send:hover{background:#333}
+.btn-send:active{transform:scale(.99)}
+.btn-send:disabled{background:#aaa;cursor:not-allowed}
+/* Contract preview */
+.contract{font-family:Georgia,serif;font-size:11px;line-height:1.8;color:#1a1a1a;max-width:100%}
+.contract h1{font-size:13px;font-weight:700;text-align:center;margin-bottom:.4rem;letter-spacing:.05em}
+.contract .sub{text-align:center;font-size:10.5px;color:#666;margin-bottom:1.25rem}
+.contract h2{font-size:11px;font-weight:700;margin:1rem 0 .3rem;text-decoration:underline}
+.contract p{margin-bottom:.5rem;text-align:justify}
+.preview-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.status-msg{display:none;margin-top:1rem;padding:.75rem 1rem;border-radius:8px;font-size:13px}
+.status-msg.success{background:#e8f5e9;color:#2e7d32;display:block}
+.status-msg.error{background:#fdecea;color:#c62828;display:block}
+@media(max-width:900px){
+  .container{grid-template-columns:1fr}
+  .preview-panel{position:static}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+  <h1>Contrato de Arrendamiento de Habitación</h1>
+</header>
+
+<div class="container">
+  <div class="form-panel">
+
+    <div class="section-label">Arrendador</div>
+    <div class="field"><label>Nombre completo</label><input id="an" value="Martín Iglesias Pateiro"></div>
+    <div class="field"><label>DNI</label><input id="ad" value="44656721J"></div>
+    <div class="field"><label>Domicilio a efectos de notificaciones</label><input id="adom" value="Avenida Pardo de Cela Nº1 9ºD, Ourense"></div>
+    <div class="field"><label>Email</label><input id="amail" type="email" value="martinipateiro@gmail.com"></div>
+    <div class="field"><label>IBAN</label><input id="aiban" value="ES46 2100 2767 0701 0015 9347"></div>
+
+    <div class="section-label">Arrendatario</div>
+    <div class="field"><label>Nombre completo</label><input id="tn" value="Claudia Bartroli i Zarco"></div>
+    <div class="field"><label>DNI</label><input id="td" value="41644497F"></div>
+    <div class="field"><label>Nacionalidad</label><input id="tnac" value="española"></div>
+    <div class="field"><label>Domicilio a efectos de notificaciones</label><input id="tdom" value="Passeig Canalejas 1 4 Portal 2 2. 17001 Girona"></div>
+    <div class="field"><label>Email</label><input id="tmail" type="email" value="claudiabartroli2@gmail.com"></div>
+
+    <div class="section-label">Inmueble y habitación</div>
+    <div class="field"><label>Ciudad</label><input id="ciudad" value="Ourense"></div>
+    <div class="field"><label>Dirección del inmueble</label><input id="idir" value="Avenida da Universidade Nº 13, piso 2º Izq. (B)"></div>
+    <div class="fields-row">
+      <div class="field"><label>Nº habitación</label><input id="hnum" value="2"></div>
+      <div class="field"><label>Total habitaciones</label><input id="htot" value="4"></div>
+    </div>
+
+    <div class="section-label">Duración y condiciones económicas</div>
+    <div class="fields-row">
+      <div class="field"><label>Fecha inicio</label><input type="date" id="fi" value="2026-04-20"></div>
+      <div class="field"><label>Fecha fin</label><input type="date" id="ff" value="2026-05-20"></div>
+    </div>
+    <div class="fields-row">
+      <div class="field"><label>Renta mensual (€)</label><input id="renta" value="275"></div>
+      <div class="field"><label>Fianza (€)</label><input id="fianza" value="275"></div>
+    </div>
+    <div class="field"><label>Límite suministros por persona (€/mes)</label><input id="lsum" value="50"></div>
+
+    <div class="section-label">Opciones</div>
+    <div class="toggle-row">
+      <span>Seguro de impago</span>
+      <label class="toggle"><input type="checkbox" id="seguro"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span>Avalista solidario</span>
+      <label class="toggle"><input type="checkbox" id="avalista"><span class="slider"></span></label>
+    </div>
+    <div id="avalista_fields" style="display:none" class="sub-fields">
+      <div class="field"><label>Nombre avalista</label><input id="av_nombre" value=""></div>
+      <div class="field"><label>DNI avalista</label><input id="av_dni" value=""></div>
+    </div>
+
+    <div class="section-label">Cláusulas adicionales</div>
+    <div class="field"><label>Texto libre (opcional)</label><textarea id="extra" placeholder="Añade aquí cualquier cláusula adicional..."></textarea></div>
+
+    <div class="email-section">
+      <p>✉️ Se enviará al inquilino un email con el enlace para firmar. Cuando firme, recibirás tú un aviso para hacer lo mismo.</p>
+      <button class="btn-send" onclick="enviarContrato()">Generar y enviar al inquilino</button>
+    </div>
+
+    <div id="status" class="status-msg"></div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="preview-label">Vista previa</div>
+    <div class="contract" id="preview"></div>
+  </div>
+</div>
+
+<script src="js/contrato.js"></script>
+<script>
+  const SUPABASE_URL = 'https://kyrjqbautyklefhqzqbo.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5cmpxYmF1dHlrbGVmaHF6cWJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDgwNjUsImV4cCI6MjA5NjY4NDA2NX0.EXBSK0ZLJUsWt1iQ8btA1FkQE_aPT_MFkdgEhkP4Gh0';
+
+  document.querySelectorAll('input,textarea').forEach(el => el.addEventListener('input', renderPreview));
+  document.getElementById('seguro').addEventListener('change', renderPreview);
+  document.getElementById('avalista').addEventListener('change', function(){
+    document.getElementById('avalista_fields').style.display = this.checked ? 'block' : 'none';
+    renderPreview();
+  });
+
+  renderPreview();
+
+  function getDatos(){
+    return {
+      an: v('an'), ad: v('ad'), adom: v('adom'), amail: v('amail'), aiban: v('aiban'),
+      tn: v('tn'), td: v('td'), tnac: v('tnac'), tdom: v('tdom'), tmail: v('tmail'),
+      ciudad: v('ciudad'), idir: v('idir'), hnum: v('hnum'), htot: v('htot'),
+      fi: v('fi'), ff: v('ff'), renta: v('renta'), fianza: v('fianza'), lsum: v('lsum'),
+      seguro: document.getElementById('seguro').checked,
+      avalista: document.getElementById('avalista').checked,
+      av_nombre: v('av_nombre'), av_dni: v('av_dni'),
+      extra: v('extra')
+    };
+  }
+
+  function renderPreview(){ document.getElementById('preview').innerHTML = buildContrato(getDatos()); }
+
+  async function enviarContrato(){
+    const btn = document.querySelector('.btn-send');
+    const status = document.getElementById('status');
+    const datos = getDatos();
+
+    if(!datos.tmail){ showStatus('error','Introduce el email del arrendatario.'); return; }
+    if(!datos.amail){ showStatus('error','Introduce el email del arrendador.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+    status.className = 'status-msg';
+
+    try {
+      // Save to Supabase
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/contratos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ datos, email_inquilino: datos.tmail, email_arrendador: datos.amail })
+      });
+
+      if(!res.ok) throw new Error('Error al guardar el contrato');
+      const [contrato] = await res.json();
+      const id = contrato.id;
+
+      // Send email to tenant
+      btn.textContent = 'Enviando email...';
+      const siteUrl = window.location.origin + window.location.pathname.replace('index.html','');
+      const linkInquilino = `${siteUrl}firmar.html?id=${id}&rol=inquilino`;
+
+      await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          from: 'onboarding@resend.dev',
+          to: datos.amail, // sending to arrendador since free tier limitation
+          subject: `Contrato de arrendamiento – Habitación ${datos.hnum} – ${datos.ciudad}`,
+          html: `
+            <p>Hola,</p>
+            <p>Se ha generado un contrato de arrendamiento para <strong>${datos.tn}</strong>.</p>
+            <p>Por favor, comparte el siguiente enlace con el arrendatario para que pueda leer y firmar el contrato:</p>
+            <p><a href="${linkInquilino}" style="background:#1D9E75;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Firmar contrato (enlace para el inquilino)</a></p>
+            <p style="font-size:12px;color:#888">O copia este enlace: ${linkInquilino}</p>
+            <p style="font-size:12px;color:#888">Una vez el inquilino firme, recibirás otro email para completar tu firma.</p>
+          `
+        })
+      });
+
+      showStatus('success', `✅ ¡Contrato guardado! Enlace para el inquilino copiado al portapapeles.\n\nEnlace: ${linkInquilino}`);
+      navigator.clipboard.writeText(linkInquilino).catch(()=>{});
+
+    } catch(e) {
+      showStatus('error', 'Error: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Generar y enviar al inquilino';
+    }
+  }
+
+  function showStatus(type, msg){
+    const el = document.getElementById('status');
+    el.className = 'status-msg ' + type;
+    el.textContent = msg;
+  }
+
+  function v(id){ return document.getElementById(id)?.value || ''; }
+</script>
+</body>
+</html>
