@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentos Firmados</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
+header{background:#1a1a1a;color:#fff;padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:.75rem}
+header svg{width:24px;height:24px;opacity:.8}
+header h1{font-size:1rem;font-weight:500}
+.btn-pdf{padding:8px 18px;font-size:13px;font-weight:600;background:#1D9E75;color:white;border:none;border-radius:7px;cursor:pointer}
+.btn-pdf:hover{background:#0F6E56}
+.page{max-width:780px;margin:2rem auto;padding:0 1.5rem 4rem}
+.card{background:#fff;border-radius:12px;padding:2.5rem;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:1.5rem}
+.contract{font-family:Georgia,serif;font-size:11.5px;line-height:1.8;color:#1a1a1a}
+.contract h1{font-size:13px;font-weight:700;text-align:center;margin-bottom:.4rem;letter-spacing:.05em}
+.contract .sub{text-align:center;font-size:10.5px;color:#666;margin-bottom:1.25rem}
+.contract h2{font-size:11.5px;font-weight:700;margin:1rem 0 .3rem;text-decoration:underline}
+.contract p{margin-bottom:.5rem;text-align:justify}
+.firmas-block{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid #eee}
+.firma-col h3{font-size:12px;font-weight:600;color:#555;margin-bottom:.75rem}
+.firma-img{border:1px solid #e8e8e8;border-radius:8px;padding:.5rem;background:#fafafa;max-width:280px}
+.firma-img img{width:100%;display:block}
+.firma-meta{font-size:10.5px;color:#999;margin-top:.4rem}
+.pendiente{font-size:11px;color:#aaa;font-style:italic;padding:1rem 0}
+.badge-firmado{display:inline-flex;align-items:center;gap:.4rem;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;background:#e8f5e9;color:#2e7d32;margin-bottom:1.5rem}
+.section-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:2px solid #f0f0f0}
+.anexo-embed{width:100%;border:none;border-radius:8px;background:#f5f5f5;margin-bottom:1rem}
+@media print{
+  header .btn-pdf{display:none}
+  body{background:#fff}
+  .card{box-shadow:none;border-radius:0;padding:1.5cm}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    <h1>Documentos Firmados</h1>
+  </div>
+  <button class="btn-pdf" onclick="window.print()">⬇ Descargar PDF</button>
+</header>
+
+<div class="page">
+  <div id="main"><div class="card" style="text-align:center;padding:3rem;color:#888">Cargando...</div></div>
+</div>
+
+<script src="js/contrato.js"></script>
+<script>
+const SUPABASE_URL = 'https://kyrjqbautyklefhqzqbo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5cmpxYmF1dHlrbGVmaHF6cWJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDgwNjUsImV4cCI6MjA5NjY4NDA2NX0.EXBSK0ZLJUsWt1iQ8btA1FkQE_aPT_MFkdgEhkP4Gh0';
+
+const id = new URLSearchParams(location.search).get('id');
+
+async function init(){
+  if(!id){ document.getElementById('main').innerHTML='<div class="card" style="text-align:center;padding:3rem;color:#c62828">Enlace no válido.</div>'; return; }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/contratos?id=eq.${id}`, {
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+    });
+    const data = await res.json();
+    if(!data.length){ document.getElementById('main').innerHTML='<div class="card" style="text-align:center;padding:3rem;color:#c62828">Contrato no encontrado.</div>'; return; }
+    render(data[0]);
+  } catch(e){ document.getElementById('main').innerHTML='<div class="card" style="text-align:center;padding:3rem;color:#c62828">Error al cargar.</div>'; }
+}
+
+function fmtFecha(ts){ return ts ? new Date(ts).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}) : '—'; }
+
+async function render(c){
+  const d = c.datos;
+  const todoFirmado = c.firma_inquilino && c.firma_arrendador && c.firma_anexo_inquilino && c.firma_anexo_arrendador;
+  const fechaAnexo = fmtFecha(c.firmado_anexo_inquilino_at || c.created_at);
+  let anexoUrl = `${SUPABASE_URL}/storage/v1/object/public/anexos/anexo-${d.hnum}.pdf`;
+  try {
+    const anexoRes = await fetch('/.netlify/functions/generar-anexo', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ hnum: d.hnum, inquilino: d.tn, fecha: fechaAnexo, firma_arrendador: c.firma_anexo_arrendador, firma_inquilino: c.firma_anexo_inquilino })
+    });
+    const anexoData = await anexoRes.json();
+    if(anexoData.pdf) anexoUrl = `data:application/pdf;base64,${anexoData.pdf}`;
+  } catch(e){ console.error('Error generando anexo:', e); }
+
+  document.getElementById('main').innerHTML = `
+    ${todoFirmado ? `<div class="card" style="padding:1rem 1.5rem"><div class="badge-firmado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Contrato y anexo firmados por ambas partes</div></div>` : ''}
+
+    <div class="card">
+      <div class="section-title">Contrato de Arrendamiento</div>
+      <div class="contract">${buildContrato(d)}</div>
+      <div class="firmas-block">
+        <div class="firma-col">
+          <h3>Firma del arrendador</h3>
+          ${c.firma_arrendador ? `<div class="firma-img"><img src="${c.firma_arrendador}"></div><div class="firma-meta">D. ${d.an} · DNI ${d.ad}<br>Firmado el ${fmtFecha(c.firmado_arrendador_at)}</div>` : '<div class="pendiente">Pendiente de firma</div>'}
+        </div>
+        <div class="firma-col">
+          <h3>Firma del arrendatario</h3>
+          ${c.firma_inquilino ? `<div class="firma-img"><img src="${c.firma_inquilino}"></div><div class="firma-meta">D. ${d.tn} · DNI ${d.td}<br>Firmado el ${fmtFecha(c.firmado_inquilino_at)}</div>` : '<div class="pendiente">Pendiente de firma</div>'}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Anexo — Inventario Habitación ${d.hnum}</div>
+      <iframe class="anexo-embed" src="${anexoUrl}" height="600"></iframe>
+      <div class="firmas-block">
+        <div class="firma-col">
+          <h3>Firma del arrendador</h3>
+          ${c.firma_anexo_arrendador ? `<div class="firma-img"><img src="${c.firma_anexo_arrendador}"></div><div class="firma-meta">D. ${d.an} · DNI ${d.ad}<br>Firmado el ${fmtFecha(c.firmado_anexo_arrendador_at)}</div>` : '<div class="pendiente">Pendiente de firma</div>'}
+        </div>
+        <div class="firma-col">
+          <h3>Firma del arrendatario</h3>
+          ${c.firma_anexo_inquilino ? `<div class="firma-img"><img src="${c.firma_anexo_inquilino}"></div><div class="firma-meta">D. ${d.tn} · DNI ${d.td}<br>Firmado el ${fmtFecha(c.firmado_anexo_inquilino_at)}</div>` : '<div class="pendiente">Pendiente de firma</div>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+init();
+</script>
+</body>
+</html>
