@@ -2,23 +2,27 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<link rel="icon" type="image/png" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Contratos">
+<meta name="theme-color" content="#1a1a1a">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Firmar Contrato</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
 header{background:#1a1a1a;color:#fff;padding:1.25rem 2rem;display:flex;align-items:center;gap:.75rem}
-header svg{width:24px;height:24px;opacity:.8}
 header h1{font-size:1rem;font-weight:500}
 .page{max-width:780px;margin:2rem auto;padding:0 1.5rem 4rem}
 .card{background:#fff;border-radius:12px;padding:2rem;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:1.5rem}
-.loading{text-align:center;padding:3rem;color:#888;font-size:14px}
 .contract{font-family:Georgia,serif;font-size:11.5px;line-height:1.8;color:#1a1a1a}
 .contract h1{font-size:13px;font-weight:700;text-align:center;margin-bottom:.4rem;letter-spacing:.05em}
 .contract .sub{text-align:center;font-size:10.5px;color:#666;margin-bottom:1.25rem}
 .contract h2{font-size:11.5px;font-weight:700;margin:1rem 0 .3rem;text-decoration:underline}
 .contract p{margin-bottom:.5rem;text-align:justify}
-.sign-section h2{font-size:15px;font-weight:600;margin-bottom:.5rem}
 .sign-section p{font-size:13px;color:#555;margin-bottom:1.25rem}
 .sign-area{border:1.5px dashed #ccc;border-radius:10px;background:#fafafa;cursor:crosshair;display:block;touch-action:none}
 .sign-controls{display:flex;gap:.75rem;margin-top:.75rem}
@@ -43,23 +47,23 @@ header h1{font-size:1rem;font-weight:500}
 .firma-existente span{font-size:11px;color:#888;display:block;margin-top:.3rem}
 .anexo-embed{width:100%;border:none;border-radius:8px;background:#f5f5f5}
 .step-indicator{display:flex;gap:0;margin-bottom:1.5rem;border-radius:8px;overflow:hidden;border:1px solid #e0e0e0}
-.step{flex:1;padding:.625rem;text-align:center;font-size:12px;font-weight:500;background:#f9f9f9;color:#888}
+.step{flex:1;padding:.625rem;text-align:center;font-size:11px;font-weight:500;background:#f9f9f9;color:#888}
 .step.active{background:#1a1a1a;color:#fff}
 .step.done{background:#1D9E75;color:#fff}
 .section-divider{display:flex;align-items:center;gap:1rem;margin:1.5rem 0}
 .section-divider span{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
 .section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:#e8e8e8}
+.ok-banner{background:#e8f5e9;border-radius:8px;padding:.875rem 1.25rem;font-size:13px;color:#2e7d32;margin-bottom:1.5rem}
 </style>
 </head>
 <body>
-
 <header>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-  <h1>Firma de Contrato y Anexo</h1>
+  <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+  <h1>Firma de Documentos</h1>
 </header>
 
 <div class="page">
-  <div id="main"><div class="loading card">Cargando contrato...</div></div>
+  <div id="main"><div class="card" style="text-align:center;padding:3rem;color:#888">Cargando...</div></div>
 </div>
 
 <script src="js/contrato.js"></script>
@@ -72,9 +76,8 @@ const id = params.get('id');
 const rol = params.get('rol');
 
 let contrato = null;
-let canvasContrato, ctxContrato;
-let canvasAnexo, ctxAnexo;
-let drawingContrato = false, drawingAnexo = false;
+let canvases = {};
+let ctxs = {};
 let lastX, lastY;
 
 async function init(){
@@ -90,38 +93,39 @@ async function init(){
   } catch(e){ showError('Error al cargar el contrato.'); }
 }
 
-async function getAnexoDataUrl(hnum, inquilino, fecha){
+async function getPdfUrl(tipo, params){
   try {
-    const res = await fetch("/.netlify/functions/generar-anexo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hnum, inquilino, fecha })
+    const res = await fetch(`/.netlify/functions/generar-${tipo}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
     });
     const data = await res.json();
     if(data.pdf) return `data:application/pdf;base64,${data.pdf}`;
-  } catch(e){ console.error("Error generando anexo:", e); }
-  return `${SUPABASE_URL}/storage/v1/object/public/anexos/anexo-${hnum}.pdf`;
-}
-function getAnexoUrl(hnum){
-  return `${SUPABASE_URL}/storage/v1/object/public/anexos/anexo-${hnum}.pdf`;
+  } catch(e){ console.error(e); }
+  return null;
 }
 
 async function render(){
   const d = contrato.datos;
   const esInquilino = rol === 'inquilino';
-  const yaFirmoContrato = esInquilino ? !!contrato.firma_inquilino : !!contrato.firma_arrendador;
-  const yaFirmoAnexo = esInquilino ? !!contrato.firma_anexo_inquilino : !!contrato.firma_anexo_arrendador;
+  const conSeguro = !!d.seguro;
+  const conAvalista = !!(d.avalista && d.av_nombre);
+
+  const yaContrato = esInquilino ? !!contrato.firma_inquilino : !!contrato.firma_arrendador;
+  const yaAnexo    = esInquilino ? !!contrato.firma_anexo_inquilino : !!contrato.firma_anexo_arrendador;
+  const yaLopd     = !conSeguro || (esInquilino ? !!contrato.firma_lopd_inquilino : !!contrato.firma_lopd_arrendador);
 
   if(rol === 'arrendador' && !contrato.firma_inquilino){
-    showError('El arrendatario aún no ha firmado el contrato. Podrás firmarlo una vez el arrendatario complete su firma.');
+    showError('El arrendatario aún no ha firmado. Podrás firmarlo una vez complete su proceso.');
     return;
   }
 
-  if(yaFirmoContrato && yaFirmoAnexo){
+  if(yaContrato && yaAnexo && yaLopd){
     document.getElementById('main').innerHTML = `
       <div class="card ya-firmado">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <h2>Ya firmaste contrato y anexo</h2>
+        <h2>Todos los documentos firmados</h2>
         <p>${esInquilino ? 'El arrendador completará las firmas próximamente.' : 'El proceso está completamente firmado por ambas partes.'}</p>
         ${!esInquilino ? `<p style="margin-top:1rem"><a href="ver.html?id=${id}" style="color:#1D9E75;font-weight:600">Ver documentos firmados →</a></p>` : ''}
       </div>`;
@@ -131,87 +135,117 @@ async function render(){
   const nombreFirmante = esInquilino ? d.tn : d.an;
   const rolLabel = esInquilino ? 'Arrendatario' : 'Arrendador';
   const badgeClass = esInquilino ? 'inquilino' : 'arrendador';
-  const hoy = new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"});
-  const anexoUrl = await getAnexoDataUrl(d.hnum, d.tn, hoy);
+  const hoy = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
 
-  const pasoContrato = yaFirmoContrato ? 'done' : 'active';
-  const pasoAnexo = yaFirmoContrato ? 'active' : '';
+  // Build steps
+  const steps = [
+    { label: '1. Contrato', done: yaContrato },
+    { label: `2. Anexo hab. ${d.hnum}`, done: yaAnexo },
+  ];
+  if(conSeguro) steps.push({ label: '3. Autorización LOPD', done: yaLopd });
+
+  const activeIdx = steps.findIndex(s => !s.done);
+  const stepsHtml = steps.map((s,i) => {
+    const cls = s.done ? 'done' : (i === activeIdx ? 'active' : '');
+    return `<div class="step ${cls}">${s.label}</div>`;
+  }).join('');
+
+  // Determine current step content
+  let stepContent = '';
+
+  if(!yaContrato){
+    stepContent = `
+      <div class="scroll-hint">Lee el contrato completo antes de firmar</div>
+      <div class="contract">${buildContrato(d)}</div>
+      ${contrato.firma_inquilino && rol === 'arrendador' ? `
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
+          <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario:</p>
+          <div class="firma-existente"><img src="${contrato.firma_inquilino}"><span>Firmado el ${new Date(contrato.firmado_inquilino_at).toLocaleDateString('es-ES')}</span></div>
+        </div>` : ''}
+      <div class="section-divider"><span>Firma del contrato</span></div>
+      <div class="sign-section">
+        <p>Dibuja tu firma para el contrato de arrendamiento.</p>
+        <canvas class="sign-area" id="canvas-contrato" width="680" height="160"></canvas>
+        <div class="sign-controls">
+          <button class="btn-clear" onclick="clearCanvas('contrato')">Borrar</button>
+          <button class="btn-firmar" id="btn-contrato" onclick="firmarDoc('contrato')">Firmar contrato →</button>
+        </div>
+        <div id="status-contrato"></div>
+      </div>`;
+
+  } else if(!yaAnexo){
+    const anexoUrl = await getPdfUrl('anexo', { hnum: d.hnum, inquilino: d.tn, fecha: hoy });
+    stepContent = `
+      <div class="ok-banner">✅ Contrato firmado correctamente</div>
+      <div class="scroll-hint">Lee el anexo completo antes de firmar</div>
+      <p style="font-size:12px;color:#888;margin-bottom:.75rem">Anexo de inventario — Habitación ${d.hnum}</p>
+      <iframe class="anexo-embed" src="${anexoUrl || `${SUPABASE_URL}/storage/v1/object/public/anexos/anexo-${d.hnum}.pdf`}" height="600"></iframe>
+      ${contrato.firma_anexo_inquilino && rol === 'arrendador' ? `
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
+          <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario en el anexo:</p>
+          <div class="firma-existente"><img src="${contrato.firma_anexo_inquilino}"><span>Firmado el ${new Date(contrato.firmado_anexo_inquilino_at).toLocaleDateString('es-ES')}</span></div>
+        </div>` : ''}
+      <div class="section-divider"><span>Firma del anexo</span></div>
+      <div class="sign-section">
+        <p>Dibuja tu firma para el anexo de inventario de la habitación ${d.hnum}.</p>
+        <canvas class="sign-area" id="canvas-anexo" width="680" height="160"></canvas>
+        <div class="sign-controls">
+          <button class="btn-clear" onclick="clearCanvas('anexo')">Borrar</button>
+          <button class="btn-firmar" id="btn-anexo" onclick="firmarDoc('anexo')">Firmar anexo →</button>
+        </div>
+        <div id="status-anexo"></div>
+      </div>`;
+
+  } else if(!yaLopd && conSeguro){
+    const lopdUrl = await getPdfUrl('lopd', {
+      cedente_nombre: d.an, cedente_nif: d.ad,
+      cesionario1_nombre: d.tn, cesionario1_nif: d.td,
+      cesionario2_nombre: conAvalista ? d.av_nombre : null,
+      cesionario2_nif: conAvalista ? d.av_dni : null
+    });
+    stepContent = `
+      <div class="ok-banner">✅ Contrato y anexo firmados correctamente</div>
+      <div class="scroll-hint">Lee el documento LOPD antes de firmar</div>
+      <p style="font-size:12px;color:#888;margin-bottom:.75rem">Autorización LOPD — Seguro de impago SEAG</p>
+      <iframe class="anexo-embed" src="${lopdUrl || `${SUPABASE_URL}/storage/v1/object/public/anexos/lopd.pdf`}" height="700"></iframe>
+      ${contrato.firma_lopd_inquilino && rol === 'arrendador' ? `
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
+          <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario en la LOPD:</p>
+          <div class="firma-existente"><img src="${contrato.firma_lopd_inquilino}"><span>Firmado el ${new Date(contrato.firmado_lopd_inquilino_at).toLocaleDateString('es-ES')}</span></div>
+        </div>` : ''}
+      <div class="section-divider"><span>Firma de la autorización LOPD</span></div>
+      <div class="sign-section">
+        <p>Al firmar confirmas que aceptas la autorización LOPD para el seguro de impago.</p>
+        <canvas class="sign-area" id="canvas-lopd" width="680" height="160"></canvas>
+        <div class="sign-controls">
+          <button class="btn-clear" onclick="clearCanvas('lopd')">Borrar</button>
+          <button class="btn-firmar" id="btn-lopd" onclick="firmarDoc('lopd')">Firmar autorización →</button>
+        </div>
+        <div id="status-lopd"></div>
+      </div>`;
+  }
 
   document.getElementById('main').innerHTML = `
-    <div class="step-indicator">
-      <div class="step ${pasoContrato}">1. Contrato</div>
-      <div class="step ${pasoAnexo}">2. Anexo habitación ${d.hnum}</div>
-    </div>
-
+    <div class="step-indicator">${stepsHtml}</div>
     <div class="card">
       <span class="badge ${badgeClass}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         Firmando como ${rolLabel}: ${nombreFirmante}
       </span>
-
-      ${!yaFirmoContrato ? `
-        <div class="scroll-hint">Lee el contrato completo antes de firmar</div>
-        <div class="contract">${buildContrato(d)}</div>
-        ${contrato.firma_inquilino && rol === 'arrendador' ? `
-          <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
-            <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario:</p>
-            <div class="firma-existente"><img src="${contrato.firma_inquilino}"><span>Firmado el ${new Date(contrato.firmado_inquilino_at).toLocaleDateString('es-ES')}</span></div>
-          </div>` : ''}
-
-        <div class="section-divider"><span>Firma del contrato</span></div>
-        <div class="sign-section">
-          <p>Dibuja tu firma para el contrato de arrendamiento.</p>
-          <canvas class="sign-area" id="canvas-contrato" width="680" height="160"></canvas>
-          <div class="sign-controls">
-            <button class="btn-clear" onclick="clearCanvas('contrato')">Borrar</button>
-            <button class="btn-firmar" id="btn-contrato" onclick="firmarContrato()">Firmar contrato →</button>
-          </div>
-          <div id="status-contrato"></div>
-        </div>
-      ` : `
-        <div style="background:#e8f5e9;border-radius:8px;padding:.875rem 1.25rem;font-size:13px;color:#2e7d32;margin-bottom:1.5rem">
-          ✅ Contrato firmado correctamente
-        </div>
-
-        <div class="scroll-hint">Lee el anexo completo antes de firmar</div>
-        <p style="font-size:12px;color:#888;margin-bottom:.75rem">Anexo de inventario — Habitación ${d.hnum}</p>
-        <iframe class="anexo-embed" src="${anexoUrl}" height="600"></iframe>
-
-        ${contrato.firma_anexo_inquilino && rol === 'arrendador' ? `
-          <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
-            <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario en el anexo:</p>
-            <div class="firma-existente"><img src="${contrato.firma_anexo_inquilino}"><span>Firmado el ${new Date(contrato.firmado_anexo_inquilino_at).toLocaleDateString('es-ES')}</span></div>
-          </div>` : ''}
-
-        <div class="section-divider"><span>Firma del anexo</span></div>
-        <div class="sign-section">
-          <p>Dibuja tu firma para el anexo de inventario de la habitación ${d.hnum}.</p>
-          <canvas class="sign-area" id="canvas-anexo" width="680" height="160"></canvas>
-          <div class="sign-controls">
-            <button class="btn-clear" onclick="clearCanvas('anexo')">Borrar</button>
-            <button class="btn-firmar" id="btn-anexo" onclick="firmarAnexo()">Firmar anexo y finalizar</button>
-          </div>
-          <div id="status-anexo"></div>
-        </div>
-      `}
+      ${stepContent}
     </div>`;
 
-  if(!yaFirmoContrato) initCanvas('contrato');
-  else initCanvas('anexo');
+  // Init canvas for current step
+  const currentCanvas = !yaContrato ? 'contrato' : (!yaAnexo ? 'anexo' : 'lopd');
+  initCanvas(currentCanvas);
 }
 
 function initCanvas(tipo){
   const canvas = document.getElementById(`canvas-${tipo}`);
   if(!canvas) return;
   const ctx = canvas.getContext('2d');
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth = 2;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  if(tipo === 'contrato'){ canvasContrato = canvas; ctxContrato = ctx; }
-  else { canvasAnexo = canvas; ctxAnexo = ctx; }
-
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  canvases[tipo] = canvas; ctxs[tipo] = ctx;
   let drawing = false;
   canvas.addEventListener('mousedown', e => { drawing=true; [lastX,lastY]=getPos(canvas,e); });
   canvas.addEventListener('mousemove', e => { if(!drawing)return; drawLine(ctx,canvas,getPos(canvas,e)); });
@@ -224,61 +258,42 @@ function initCanvas(tipo){
 
 function getPos(canvas, e){
   const r = canvas.getBoundingClientRect();
-  return [(e.clientX-r.left)*(canvas.width/r.width), (e.clientY-r.top)*(canvas.height/r.height)];
+  return [(e.clientX-r.left)*(canvas.width/r.width),(e.clientY-r.top)*(canvas.height/r.height)];
 }
-
 function drawLine(ctx, canvas, [x,y]){
   ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke();
   [lastX,lastY]=[x,y];
 }
+function clearCanvas(tipo){ ctxs[tipo]?.clearRect(0,0,canvases[tipo].width,canvases[tipo].height); }
+function isBlank(canvas){ return !canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some(v=>v!==0); }
 
-function clearCanvas(tipo){
-  if(tipo==='contrato') ctxContrato?.clearRect(0,0,canvasContrato.width,canvasContrato.height);
-  else ctxAnexo?.clearRect(0,0,canvasAnexo.width,canvasAnexo.height);
-}
-
-function isBlank(canvas){
-  return !canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some(v=>v!==0);
-}
-
-async function firmarContrato(){
-  if(isBlank(canvasContrato)){ showStatus('contrato','error','Dibuja tu firma antes de continuar.'); return; }
-  const btn = document.getElementById('btn-contrato');
-  btn.disabled = true; btn.textContent = 'Guardando...';
-
-  try {
-    const firma = canvasContrato.toDataURL('image/png');
-    const esInquilino = rol === 'inquilino';
-    const update = esInquilino
-      ? { firma_inquilino: firma, firmado_inquilino_at: new Date().toISOString() }
-      : { firma_arrendador: firma, firmado_arrendador_at: new Date().toISOString() };
-
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/contratos?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Prefer':'return=representation' },
-      body: JSON.stringify(update)
-    });
-    if(!res.ok) throw new Error('Error al guardar');
-    const [updated] = await res.json();
-    contrato = updated;
-    render();
-  } catch(e){
-    showStatus('contrato','error','Error: '+e.message);
-    btn.disabled=false; btn.textContent='Firmar contrato →';
-  }
-}
-
-async function firmarAnexo(){
-  if(isBlank(canvasAnexo)){ showStatus('anexo','error','Dibuja tu firma antes de continuar.'); return; }
-  const btn = document.getElementById('btn-anexo');
+async function firmarDoc(tipo){
+  const canvas = canvases[tipo];
+  if(!canvas || isBlank(canvas)){ showStatus(tipo,'error','Dibuja tu firma antes de continuar.'); return; }
+  const btn = document.getElementById(`btn-${tipo}`);
   btn.disabled=true; btn.textContent='Guardando...';
 
   try {
-    const firma = canvasAnexo.toDataURL('image/png');
+    const firma = canvas.toDataURL('image/png');
     const esInquilino = rol === 'inquilino';
-    const update = esInquilino
-      ? { firma_anexo_inquilino: firma, firmado_anexo_inquilino_at: new Date().toISOString() }
-      : { firma_anexo_arrendador: firma, firmado_anexo_arrendador_at: new Date().toISOString() };
+    const d = contrato.datos;
+    const conSeguro = !!d.seguro;
+    const conAvalista = !!(d.avalista && d.av_nombre);
+
+    let update = {};
+    if(tipo === 'contrato'){
+      update = esInquilino
+        ? { firma_inquilino: firma, firmado_inquilino_at: new Date().toISOString() }
+        : { firma_arrendador: firma, firmado_arrendador_at: new Date().toISOString() };
+    } else if(tipo === 'anexo'){
+      update = esInquilino
+        ? { firma_anexo_inquilino: firma, firmado_anexo_inquilino_at: new Date().toISOString() }
+        : { firma_anexo_arrendador: firma, firmado_anexo_arrendador_at: new Date().toISOString() };
+    } else if(tipo === 'lopd'){
+      update = esInquilino
+        ? { firma_lopd_inquilino: firma, firmado_lopd_inquilino_at: new Date().toISOString() }
+        : { firma_lopd_arrendador: firma, firmado_lopd_arrendador_at: new Date().toISOString() };
+    }
 
     const res = await fetch(`${SUPABASE_URL}/rest/v1/contratos?id=eq.${id}`, {
       method: 'PATCH',
@@ -289,54 +304,56 @@ async function firmarAnexo(){
     const [updated] = await res.json();
     contrato = updated;
 
-    const d = contrato.datos;
     const siteUrl = window.location.origin + window.location.pathname.replace('firmar.html','');
+    const esUltimoDoc = tipo === (conSeguro ? 'lopd' : 'anexo');
 
-    if(esInquilino){
-      const linkArrendador = `${siteUrl}firmar.html?id=${id}&rol=arrendador`;
-      await fetch('/.netlify/functions/send-email', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          from:'onboarding@resend.dev',
-          to: d.amail,
-          subject:`✅ ${d.tn} ha firmado contrato y anexo – Tu turno`,
-          html:`<p>Hola ${d.an},</p><p><strong>${d.tn}</strong> ha firmado el contrato y el anexo de la habitación ${d.hnum}.</p><p>Ahora es tu turno:</p><p><a href="${linkArrendador}" style="background:#1a1a1a;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Firmar como arrendador</a></p>`
-        })
-      });
-      document.getElementById('main').innerHTML = `
-        <div class="card ya-firmado">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <h2>¡Contrato y anexo firmados!</h2>
-          <p>Tus firmas han quedado registradas. El arrendador recibirá un aviso para completar el proceso.</p>
-        </div>`;
+    if(esUltimoDoc){
+      if(esInquilino){
+        // Notify arrendador
+        const linkArrendador = `${siteUrl}firmar.html?id=${id}&rol=arrendador`;
+        const numDocs = conSeguro ? 'contrato, anexo y autorización LOPD' : 'contrato y anexo';
+        await fetch('/.netlify/functions/send-email', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            from:'onboarding@resend.dev', to: d.amail,
+            subject:`✅ ${d.tn} ha firmado todos los documentos – Tu turno`,
+            html:`<p>Hola ${d.an},</p><p><strong>${d.tn}</strong> ha firmado el ${numDocs} de la habitación ${d.hnum}.</p><p>Ahora es tu turno:</p><p><a href="${linkArrendador}" style="background:#1a1a1a;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Firmar como arrendador</a></p>`
+          })
+        });
+        document.getElementById('main').innerHTML = `
+          <div class="card ya-firmado">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h2>¡Todos los documentos firmados!</h2>
+            <p>Tus firmas han quedado registradas. El arrendador recibirá un aviso para completar el proceso.</p>
+          </div>`;
+      } else {
+        // Both done — notify and redirect
+        const linkVer = `${siteUrl}ver.html?id=${id}`;
+        await fetch('/.netlify/functions/send-email', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            from:'onboarding@resend.dev', to: d.amail,
+            subject:`✅ Todos los documentos firmados – Habitación ${d.hnum}, ${d.ciudad}`,
+            html:`<p>Todos los documentos de la habitación ${d.hnum} han sido firmados por ambas partes.</p><p><a href="${linkVer}" style="background:#1D9E75;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Ver documentos firmados</a></p>`
+          })
+        });
+        window.location.href = `ver.html?id=${id}`;
+      }
     } else {
-      const linkVer = `${siteUrl}ver.html?id=${id}`;
-      await fetch('/.netlify/functions/send-email', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          from:'onboarding@resend.dev',
-          to: d.amail,
-          subject:`✅ Contrato y anexo firmados – Habitación ${d.hnum}, ${d.ciudad}`,
-          html:`<p>El contrato y el anexo de la habitación ${d.hnum} han sido firmados por ambas partes.</p><p><a href="${linkVer}" style="background:#1D9E75;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Ver documentos firmados</a></p>`
-        })
-      });
-      window.location.href = `ver.html?id=${id}`;
+      render();
     }
   } catch(e){
-    showStatus('anexo','error','Error: '+e.message);
-    btn.disabled=false; btn.textContent='Firmar anexo y finalizar';
+    showStatus(tipo,'error','Error: '+e.message);
+    btn.disabled=false;
+    btn.textContent = tipo==='contrato' ? 'Firmar contrato →' : tipo==='anexo' ? 'Firmar anexo →' : 'Firmar autorización →';
   }
 }
 
 function showStatus(tipo, type, msg){
   const el = document.getElementById(`status-${tipo}`);
   if(!el) return;
-  el.className='status-msg '+type;
-  el.textContent=msg;
+  el.className='status-msg '+type; el.textContent=msg;
 }
-
 function showError(msg){
   document.getElementById('main').innerHTML=`<div class="card" style="text-align:center;padding:3rem;color:#c62828">${msg}</div>`;
 }
