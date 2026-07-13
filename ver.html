@@ -106,6 +106,7 @@ async function render(c){
       cesionario2_nombre: conAvalista ? d.av_nombre : null,
       cesionario2_nif: conAvalista ? d.av_dni : null,
       firma_inquilino: c.firma_lopd_inquilino,
+      firma_avalista: c.firma_lopd_avalista,
       firma_arrendador: c.firma_lopd_arrendador
     }) || `${SUPABASE_URL}/storage/v1/object/public/anexos/lopd.pdf`;
   }

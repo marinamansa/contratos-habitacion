@@ -108,16 +108,29 @@ async function getPdfUrl(tipo, params){
 
 async function render(){
   const d = contrato.datos;
-  const esInquilino = rol === 'inquilino';
   const conSeguro = !!d.seguro;
   const conAvalista = !!(d.avalista && d.av_nombre);
+  const esAvalista = rol === 'avalista';
+  const esInquilino = rol === 'inquilino';
+  const esArrendador = rol === 'arrendador';
 
-  const yaContrato = esInquilino ? !!contrato.firma_inquilino : !!contrato.firma_arrendador;
-  const yaAnexo    = esInquilino ? !!contrato.firma_anexo_inquilino : !!contrato.firma_anexo_arrendador;
-  const yaLopd     = !conSeguro || (esInquilino ? !!contrato.firma_lopd_inquilino : !!contrato.firma_lopd_arrendador);
+  // Per-role field mapping
+  const campoContrato = esInquilino ? 'firma_inquilino' : esAvalista ? 'firma_avalista_contrato' : 'firma_arrendador';
+  const campoLopd     = esInquilino ? 'firma_lopd_inquilino' : esAvalista ? 'firma_lopd_avalista' : 'firma_lopd_arrendador';
 
-  if(rol === 'arrendador' && !contrato.firma_inquilino){
+  const yaContrato = !!contrato[campoContrato];
+  // Avalista: no anexo
+  const yaAnexo = esAvalista ? true : (esInquilino ? !!contrato.firma_anexo_inquilino : !!contrato.firma_anexo_arrendador);
+  const yaLopd  = !conSeguro || !!contrato[campoLopd];
+
+  // Arrendador waits for inquilino to finish
+  if(esArrendador && !contrato.firma_inquilino){
     showError('El arrendatario aún no ha firmado. Podrás firmarlo una vez complete su proceso.');
+    return;
+  }
+  // Avalista must exist
+  if(esAvalista && !conAvalista){
+    showError('Este contrato no tiene avalista solidario.');
     return;
   }
 
@@ -126,23 +139,21 @@ async function render(){
       <div class="card ya-firmado">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <h2>Todos los documentos firmados</h2>
-        <p>${esInquilino ? 'El arrendador completará las firmas próximamente.' : 'El proceso está completamente firmado por ambas partes.'}</p>
-        ${!esInquilino ? `<p style="margin-top:1rem"><a href="ver.html?id=${id}" style="color:#1D9E75;font-weight:600">Ver documentos firmados →</a></p>` : ''}
+        <p>${esArrendador ? 'El proceso está completamente firmado.' : 'Tus firmas han quedado registradas.'}</p>
+        ${esArrendador ? `<p style="margin-top:1rem"><a href="ver.html?id=${id}" style="color:#1D9E75;font-weight:600">Ver documentos firmados →</a></p>` : ''}
       </div>`;
     return;
   }
 
-  const nombreFirmante = esInquilino ? d.tn : d.an;
-  const rolLabel = esInquilino ? 'Arrendatario' : 'Arrendador';
-  const badgeClass = esInquilino ? 'inquilino' : 'arrendador';
+  const nombreFirmante = esInquilino ? d.tn : esAvalista ? d.av_nombre : d.an;
+  const rolLabel = esInquilino ? 'Arrendatario' : esAvalista ? 'Avalista' : 'Arrendador';
+  const badgeClass = esInquilino ? 'inquilino' : esAvalista ? 'inquilino' : 'arrendador';
   const hoy = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
 
-  // Build steps
-  const steps = [
-    { label: '1. Contrato', done: yaContrato },
-    { label: `2. Anexo hab. ${d.hnum}`, done: yaAnexo },
-  ];
-  if(conSeguro) steps.push({ label: '3. Autorización LOPD', done: yaLopd });
+  // Steps depend on role
+  const steps = [{ label: '1. Contrato', done: yaContrato }];
+  if(!esAvalista) steps.push({ label: `${steps.length+1}. Anexo hab. ${d.hnum}`, done: yaAnexo });
+  if(conSeguro)   steps.push({ label: `${steps.length+1}. Autorización LOPD`, done: yaLopd });
 
   const activeIdx = steps.findIndex(s => !s.done);
   const stepsHtml = steps.map((s,i) => {
@@ -150,19 +161,18 @@ async function render(){
     return `<div class="step ${cls}">${s.label}</div>`;
   }).join('');
 
-  // Determine current step content
   let stepContent = '';
 
   if(!yaContrato){
+    const firmasPrevias = [];
+    if(contrato.firma_inquilino) firmasPrevias.push(`<div class="firma-existente"><img src="${contrato.firma_inquilino}"><span>Arrendatario: ${d.tn} — ${new Date(contrato.firmado_inquilino_at).toLocaleDateString('es-ES')}</span></div>`);
+    if(contrato.firma_avalista_contrato) firmasPrevias.push(`<div class="firma-existente"><img src="${contrato.firma_avalista_contrato}"><span>Avalista: ${d.av_nombre}</span></div>`);
+
     stepContent = `
       <div class="scroll-hint">Lee el contrato completo antes de firmar</div>
       <div class="contract">${buildContrato(d)}</div>
-      ${contrato.firma_inquilino && rol === 'arrendador' ? `
-        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
-          <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario:</p>
-          <div class="firma-existente"><img src="${contrato.firma_inquilino}"><span>Firmado el ${new Date(contrato.firmado_inquilino_at).toLocaleDateString('es-ES')}</span></div>
-        </div>` : ''}
-      <div class="section-divider"><span>Firma del contrato</span></div>
+      ${firmasPrevias.length && (esArrendador) ? `<div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">${firmasPrevias.join('')}</div>` : ''}
+      <div class="section-divider"><span>Tu firma del contrato</span></div>
       <div class="sign-section">
         <p>Dibuja tu firma para el contrato de arrendamiento.</p>
         <canvas class="sign-area" id="canvas-contrato" width="680" height="160"></canvas>
@@ -180,12 +190,11 @@ async function render(){
       <div class="scroll-hint">Lee el anexo completo antes de firmar</div>
       <p style="font-size:12px;color:#888;margin-bottom:.75rem">Anexo de inventario — Habitación ${d.hnum}</p>
       <iframe class="anexo-embed" src="${anexoUrl || `${SUPABASE_URL}/storage/v1/object/public/anexos/anexo-${d.hnum}.pdf`}" height="600"></iframe>
-      ${contrato.firma_anexo_inquilino && rol === 'arrendador' ? `
+      ${contrato.firma_anexo_inquilino && esArrendador ? `
         <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
-          <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario en el anexo:</p>
-          <div class="firma-existente"><img src="${contrato.firma_anexo_inquilino}"><span>Firmado el ${new Date(contrato.firmado_anexo_inquilino_at).toLocaleDateString('es-ES')}</span></div>
+          <div class="firma-existente"><img src="${contrato.firma_anexo_inquilino}"><span>Arrendatario: ${d.tn}</span></div>
         </div>` : ''}
-      <div class="section-divider"><span>Firma del anexo</span></div>
+      <div class="section-divider"><span>Tu firma del anexo</span></div>
       <div class="sign-section">
         <p>Dibuja tu firma para el anexo de inventario de la habitación ${d.hnum}.</p>
         <canvas class="sign-area" id="canvas-anexo" width="680" height="160"></canvas>
@@ -203,17 +212,17 @@ async function render(){
       cesionario2_nombre: conAvalista ? d.av_nombre : null,
       cesionario2_nif: conAvalista ? d.av_dni : null
     });
+    const prevLopdFirmas = [];
+    if(contrato.firma_lopd_inquilino) prevLopdFirmas.push(`<div class="firma-existente"><img src="${contrato.firma_lopd_inquilino}"><span>Arrendatario: ${d.tn}</span></div>`);
+    if(contrato.firma_lopd_avalista) prevLopdFirmas.push(`<div class="firma-existente"><img src="${contrato.firma_lopd_avalista}"><span>Avalista: ${d.av_nombre}</span></div>`);
+
     stepContent = `
-      <div class="ok-banner">✅ Contrato y anexo firmados correctamente</div>
+      <div class="ok-banner">✅ Pasos anteriores firmados correctamente</div>
       <div class="scroll-hint">Lee el documento LOPD antes de firmar</div>
       <p style="font-size:12px;color:#888;margin-bottom:.75rem">Autorización LOPD — Seguro de impago SEAG</p>
       <iframe class="anexo-embed" src="${lopdUrl || `${SUPABASE_URL}/storage/v1/object/public/anexos/lopd.pdf`}" height="700"></iframe>
-      ${contrato.firma_lopd_inquilino && rol === 'arrendador' ? `
-        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">
-          <p style="font-size:12px;color:#888;margin-bottom:.5rem">Firma del arrendatario en la LOPD:</p>
-          <div class="firma-existente"><img src="${contrato.firma_lopd_inquilino}"><span>Firmado el ${new Date(contrato.firmado_lopd_inquilino_at).toLocaleDateString('es-ES')}</span></div>
-        </div>` : ''}
-      <div class="section-divider"><span>Firma de la autorización LOPD</span></div>
+      ${prevLopdFirmas.length && esArrendador ? `<div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #f0f0f0">${prevLopdFirmas.join('')}</div>` : ''}
+      <div class="section-divider"><span>Tu firma de la autorización LOPD</span></div>
       <div class="sign-section">
         <p>Al firmar confirmas que aceptas la autorización LOPD para el seguro de impago.</p>
         <canvas class="sign-area" id="canvas-lopd" width="680" height="160"></canvas>
@@ -235,7 +244,6 @@ async function render(){
       ${stepContent}
     </div>`;
 
-  // Init canvas for current step
   const currentCanvas = !yaContrato ? 'contrato' : (!yaAnexo ? 'anexo' : 'lopd');
   initCanvas(currentCanvas);
 }
@@ -275,24 +283,26 @@ async function firmarDoc(tipo){
 
   try {
     const firma = canvas.toDataURL('image/png');
-    const esInquilino = rol === 'inquilino';
+    const esInquilino  = rol === 'inquilino';
+    const esAvalista   = rol === 'avalista';
+    const esArrendador = rol === 'arrendador';
     const d = contrato.datos;
     const conSeguro = !!d.seguro;
     const conAvalista = !!(d.avalista && d.av_nombre);
+    const now = new Date().toISOString();
 
     let update = {};
     if(tipo === 'contrato'){
-      update = esInquilino
-        ? { firma_inquilino: firma, firmado_inquilino_at: new Date().toISOString() }
-        : { firma_arrendador: firma, firmado_arrendador_at: new Date().toISOString() };
+      if(esInquilino)  update = { firma_inquilino: firma, firmado_inquilino_at: now };
+      if(esAvalista)   update = { firma_avalista_contrato: firma, firmado_avalista_contrato_at: now };
+      if(esArrendador) update = { firma_arrendador: firma, firmado_arrendador_at: now };
     } else if(tipo === 'anexo'){
-      update = esInquilino
-        ? { firma_anexo_inquilino: firma, firmado_anexo_inquilino_at: new Date().toISOString() }
-        : { firma_anexo_arrendador: firma, firmado_anexo_arrendador_at: new Date().toISOString() };
+      if(esInquilino)  update = { firma_anexo_inquilino: firma, firmado_anexo_inquilino_at: now };
+      if(esArrendador) update = { firma_anexo_arrendador: firma, firmado_anexo_arrendador_at: now };
     } else if(tipo === 'lopd'){
-      update = esInquilino
-        ? { firma_lopd_inquilino: firma, firmado_lopd_inquilino_at: new Date().toISOString() }
-        : { firma_lopd_arrendador: firma, firmado_lopd_arrendador_at: new Date().toISOString() };
+      if(esInquilino)  update = { firma_lopd_inquilino: firma, firmado_lopd_inquilino_at: now };
+      if(esAvalista)   update = { firma_lopd_avalista: firma, firmado_lopd_avalista_at: now };
+      if(esArrendador) update = { firma_lopd_arrendador: firma, firmado_lopd_arrendador_at: now };
     }
 
     const res = await fetch(`${SUPABASE_URL}/rest/v1/contratos?id=eq.${id}`, {
@@ -305,39 +315,33 @@ async function firmarDoc(tipo){
     contrato = updated;
 
     const siteUrl = window.location.origin + window.location.pathname.replace('firmar.html','');
-    const esUltimoDoc = tipo === (conSeguro ? 'lopd' : 'anexo');
+    // Last doc for each role
+    const ultimoDocInquilino  = conSeguro ? 'lopd' : 'anexo';
+    const ultimoDocAvalista   = conSeguro ? 'lopd' : 'contrato';
+    const ultimoDocArrendador = conSeguro ? 'lopd' : 'anexo';
+    const esUltimo = (esInquilino && tipo === ultimoDocInquilino) ||
+                     (esAvalista  && tipo === ultimoDocAvalista)  ||
+                     (esArrendador && tipo === ultimoDocArrendador);
 
-    if(esUltimoDoc){
-      if(esInquilino){
-        // Notify arrendador
-        const linkArrendador = `${siteUrl}firmar.html?id=${id}&rol=arrendador`;
-        const numDocs = conSeguro ? 'contrato, anexo y autorización LOPD' : 'contrato y anexo';
-        await fetch('/.netlify/functions/send-email', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            from:'onboarding@resend.dev', to: d.amail,
-            subject:`✅ ${d.tn} ha firmado todos los documentos – Tu turno`,
-            html:`<p>Hola ${d.an},</p><p><strong>${d.tn}</strong> ha firmado el ${numDocs} de la habitación ${d.hnum}.</p><p>Ahora es tu turno:</p><p><a href="${linkArrendador}" style="background:#1a1a1a;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Firmar como arrendador</a></p>`
-          })
-        });
-        document.getElementById('main').innerHTML = `
-          <div class="card ya-firmado">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <h2>¡Todos los documentos firmados!</h2>
-            <p>Tus firmas han quedado registradas. El arrendador recibirá un aviso para completar el proceso.</p>
-          </div>`;
-      } else {
-        // Both done — notify and redirect
+    if(esUltimo){
+      if(esArrendador){
         const linkVer = `${siteUrl}ver.html?id=${id}`;
         await fetch('/.netlify/functions/send-email', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
             from:'onboarding@resend.dev', to: d.amail,
-            subject:`✅ Todos los documentos firmados – Habitación ${d.hnum}, ${d.ciudad}`,
-            html:`<p>Todos los documentos de la habitación ${d.hnum} han sido firmados por ambas partes.</p><p><a href="${linkVer}" style="background:#1D9E75;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Ver documentos firmados</a></p>`
+            subject:`✅ Todos los documentos firmados – Habitación ${d.hnum}`,
+            html:`<p>Todos los documentos de la habitación ${d.hnum} han sido firmados.</p><p><a href="${linkVer}" style="background:#1D9E75;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0">Ver documentos firmados</a></p>`
           })
         });
         window.location.href = `ver.html?id=${id}`;
+      } else {
+        document.getElementById('main').innerHTML = `
+          <div class="card ya-firmado">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h2>¡Todos tus documentos firmados!</h2>
+            <p>Tus firmas han quedado registradas correctamente.</p>
+          </div>`;
       }
     } else {
       render();

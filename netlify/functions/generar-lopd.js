@@ -12,16 +12,14 @@ exports.handler = async function(event) {
       cedente_nombre, cedente_nif,
       cesionario1_nombre, cesionario1_nif,
       cesionario2_nombre, cesionario2_nif,
-      firma_inquilino, firma_arrendador
+      firma_inquilino, firma_arrendador, firma_avalista
     } = JSON.parse(event.body);
 
-    // Fetch PDF from Supabase Storage
     const pdfUrl = `${SUPABASE_URL}/storage/v1/object/public/anexos/lopd.pdf`;
     const pdfRes = await fetch(pdfUrl);
     if(!pdfRes.ok) throw new Error(`No se pudo cargar el PDF LOPD: ${pdfRes.status}`);
     const pdfBytes = await pdfRes.arrayBuffer();
 
-    // Load with ignoreEncryption to handle any PDF quirks
     const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
     const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold   = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -30,8 +28,6 @@ exports.handler = async function(event) {
 
     const black = rgb(0, 0, 0);
     const fs = 9;
-
-    // pdfplumber top → pdf-lib y baseline
     const y = (top) => height - top - 7;
 
     // --- CEDENTE ---
@@ -39,6 +35,7 @@ exports.handler = async function(event) {
     if(cedente_nif)    page.drawText(cedente_nif,    { x: 449, y: y(158.1), size: fs, font: fontNormal, color: black });
 
     // --- CESIONARIOS ---
+    // Row tops: 231.1 (row1=inquilino), 267.6 (row2=avalista), ...
     const rows = [231.1, 267.6, 304.0, 340.5, 376.9, 413.4];
     const cesionarios = [];
     if(cesionario1_nombre) cesionarios.push({ nombre: cesionario1_nombre, nif: cesionario1_nif });
@@ -48,27 +45,34 @@ exports.handler = async function(event) {
       const rowY = y(rows[i]);
       if(c.nombre) page.drawText(c.nombre, { x: 75,  y: rowY, size: fs, font: fontNormal, color: black });
       if(c.nif)    page.drawText(c.nif,    { x: 290, y: rowY, size: fs, font: fontNormal, color: black });
-      // Use "Si" instead of "✓" since Helvetica doesn't support special chars
-      page.drawText('Si', { x: 511, y: rowY, size: fs, font: fontBold, color: black });
+      page.drawText('X', { x: 505, y: rowY, size: fs, font: fontBold, color: black });
     });
 
     // --- SIGNATURES ---
     const sigW = 80, sigH = 20;
 
+    // Inquilino signature in row 1 firma field
     if(firma_inquilino) {
       try {
-        const imgBytes = Buffer.from(firma_inquilino.replace(/^data:image\/png;base64,/, ''), 'base64');
-        const img = await pdfDoc.embedPng(imgBytes);
+        const img = await pdfDoc.embedPng(Buffer.from(firma_inquilino.replace(/^data:image\/png;base64,/, ''), 'base64'));
         page.drawImage(img, { x: 375, y: y(231.1) - sigH + 8, width: sigW, height: sigH });
-      } catch(e){ console.error('firma_inquilino error:', e.message); }
+      } catch(e){ console.error('firma_inquilino:', e.message); }
     }
 
+    // Avalista signature in row 2 firma field
+    if(firma_avalista) {
+      try {
+        const img = await pdfDoc.embedPng(Buffer.from(firma_avalista.replace(/^data:image\/png;base64,/, ''), 'base64'));
+        page.drawImage(img, { x: 375, y: y(267.6) - sigH + 8, width: sigW, height: sigH });
+      } catch(e){ console.error('firma_avalista:', e.message); }
+    }
+
+    // Arrendador signature near cedente line
     if(firma_arrendador) {
       try {
-        const imgBytes = Buffer.from(firma_arrendador.replace(/^data:image\/png;base64,/, ''), 'base64');
-        const img = await pdfDoc.embedPng(imgBytes);
+        const img = await pdfDoc.embedPng(Buffer.from(firma_arrendador.replace(/^data:image\/png;base64,/, ''), 'base64'));
         page.drawImage(img, { x: 375, y: y(158.1) - sigH + 8, width: sigW, height: sigH });
-      } catch(e){ console.error('firma_arrendador error:', e.message); }
+      } catch(e){ console.error('firma_arrendador:', e.message); }
     }
 
     const modifiedPdfBytes = await pdfDoc.save();
