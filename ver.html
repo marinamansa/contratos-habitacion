@@ -106,8 +106,7 @@ async function render(c){
       cesionario2_nombre: conAvalista ? d.av_nombre : null,
       cesionario2_nif: conAvalista ? d.av_dni : null,
       firma_inquilino: c.firma_lopd_inquilino,
-      firma_avalista: c.firma_lopd_avalista,
-      firma_arrendador: c.firma_lopd_arrendador
+      firma_avalista: c.firma_lopd_avalista
     }) || `${SUPABASE_URL}/storage/v1/object/public/anexos/lopd.pdf`;
   }
 
@@ -125,6 +124,10 @@ async function render(c){
         ${firmaRow('Firma del arrendador', c.firma_arrendador, d.an, d.ad, c.firmado_arrendador_at)}
         ${firmaRow('Firma del arrendatario', c.firma_inquilino, d.tn, d.td, c.firmado_inquilino_at)}
       </div>
+      ${conAvalista && c.firma_avalista_contrato ? `
+      <div class="firmas-block" style="margin-top:1rem;padding-top:1rem;border-top:1px solid #f0f0f0">
+        ${firmaRow('Firma del avalista', c.firma_avalista_contrato, d.av_nombre, d.av_dni, c.firmado_avalista_contrato_at)}
+      </div>` : conAvalista ? `<div style="font-size:11px;color:#aaa;font-style:italic;margin-top:.75rem">Firma del avalista: pendiente</div>` : ''}
     </div>
 
     <div class="card">
