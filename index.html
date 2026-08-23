@@ -51,6 +51,14 @@ header h1{font-size:1rem;font-weight:500;letter-spacing:.01em}
 .contract h2{font-size:11px;font-weight:700;margin:1rem 0 .3rem;text-decoration:underline}
 .contract p{margin-bottom:.5rem;text-align:justify}
 .preview-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.preview-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.btn-edit-all{font-size:11px;padding:4px 10px;background:transparent;border:1px solid #ddd;border-radius:6px;cursor:pointer;color:#666}
+.btn-edit-all:hover{background:#f5f5f5}
+.clausula-wrap{position:relative}
+.clausula-wrap:hover .btn-editar{opacity:1}
+.btn-editar{opacity:0;position:absolute;top:2px;right:0;font-size:10px;padding:2px 7px;background:#1a1a1a;color:#fff;border:none;border-radius:4px;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.clausula-editor{width:100%;font-size:11.5px;font-family:Georgia,serif;line-height:1.75;padding:6px 8px;border:1.5px solid #1D9E75;border-radius:6px;resize:vertical;color:#1a1a1a;background:#fffef8;margin-top:2px}
+.editada-badge{font-size:9px;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle}
 .status-msg{display:none;margin-top:1rem;padding:.75rem 1rem;border-radius:8px;font-size:13px}
 .status-msg.success{background:#e8f5e9;color:#2e7d32;display:block}
 .status-msg.error{background:#fdecea;color:#c62828;display:block}
@@ -66,8 +74,9 @@ header h1{font-size:1rem;font-weight:500;letter-spacing:.01em}
   <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
   <div>
     <h1>Contrato de Arrendamiento de Habitación</h1>
-    <span style="font-size:10px;opacity:.45;letter-spacing:.05em">v1.0</span>
+    <span style="font-size:10px;opacity:.45;letter-spacing:.05em">v2.0 beta</span>
   </div>
+  <a href="panel.html" style="padding:7px 14px;font-size:12px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;text-decoration:none;white-space:nowrap">📋 Mis contratos</a>
 </header>
 
 <div class="container">
@@ -132,7 +141,10 @@ header h1{font-size:1rem;font-weight:500;letter-spacing:.01em}
   </div>
 
   <div class="preview-panel">
-    <div class="preview-label">Vista previa</div>
+    <div class="preview-actions">
+      <span class="preview-label" style="margin-bottom:0">Vista previa</span>
+      <button class="btn-edit-all" onclick="resetEdiciones()">Restablecer todo</button>
+    </div>
     <div class="contract" id="preview"></div>
   </div>
 </div>
@@ -149,6 +161,9 @@ header h1{font-size:1rem;font-weight:500;letter-spacing:.01em}
     renderPreview();
   });
 
+  // Store per-clausula edits
+  const ediciones = {};
+
   renderPreview();
 
   function getDatos(){
@@ -160,11 +175,78 @@ header h1{font-size:1rem;font-weight:500;letter-spacing:.01em}
       seguro: document.getElementById('seguro').checked,
       avalista: document.getElementById('avalista').checked,
       av_nombre: v('av_nombre'), av_dni: v('av_dni'),
-      extra: v('extra')
+      extra: v('extra'),
+      ediciones: Object.keys(ediciones).length > 0 ? {...ediciones} : null
     };
   }
 
-  function renderPreview(){ document.getElementById('preview').innerHTML = buildContrato(getDatos()); }
+  function renderPreview(){
+    const datos = getDatos();
+    const html = buildContratoEditable(datos, ediciones);
+    document.getElementById('preview').innerHTML = html;
+  }
+
+  function buildContratoEditable(d, eds){
+    // Build the contract HTML then inject edit buttons per clause
+    const raw = buildContrato(d);
+    // Split on <h2> tags to get sections
+    const parts = raw.split(/(?=<h2>)/);
+    return parts.map((part, i) => {
+      if(!part.trim()) return '';
+      // Extract section key from h2 content
+      const h2match = part.match(/<h2>(.*?)<\/h2>/);
+      const key = h2match ? 'sec_' + i : (i === 0 ? 'sec_intro' : 'sec_' + i);
+      const isEdited = eds[key] !== undefined;
+      const displayContent = isEdited ? eds[key] : part;
+      const badgeHtml = isEdited ? '<span class="editada-badge">editada</span>' : '';
+      return `<div class="clausula-wrap" data-key="${key}">
+        <button class="btn-editar" onclick="editarClausula('${key}', this)">${isEdited ? '✓ Editando' : '✏️ Editar'}</button>
+        ${h2match ? `<h2>${h2match[1]}${badgeHtml}</h2>` : ''}
+        <div class="clausula-content" id="content-${key}">${isEdited ? displayContent : part.replace(/<h2>.*?<\/h2>/, '')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function editarClausula(key, btn){
+    const contentDiv = document.getElementById('content-' + key);
+    const existingEditor = contentDiv.querySelector('.clausula-editor');
+    if(existingEditor){
+      // Save and close
+      ediciones[key] = existingEditor.value;
+      renderPreview();
+      return;
+    }
+    // Open editor
+    const currentHtml = contentDiv.innerHTML;
+    const currentText = ediciones[key] !== undefined ? ediciones[key] : currentHtml;
+    contentDiv.innerHTML = `<textarea class="clausula-editor" rows="5">${currentText.replace(/<[^>]+>/g,'').trim()}</textarea>
+      <div style="display:flex;gap:.5rem;margin-top:.4rem">
+        <button onclick="guardarClausula('${key}')" style="padding:4px 10px;font-size:11px;background:#1D9E75;color:white;border:none;border-radius:5px;cursor:pointer">Guardar</button>
+        <button onclick="cancelarEdicion('${key}')" style="padding:4px 10px;font-size:11px;background:#f5f5f5;border:1px solid #ddd;border-radius:5px;cursor:pointer">Cancelar</button>
+        ${ediciones[key] !== undefined ? `<button onclick="restaurarClausula('${key}')" style="padding:4px 10px;font-size:11px;color:#c62828;background:transparent;border:none;cursor:pointer">Restablecer</button>` : ''}
+      </div>`;
+    btn.textContent = '✓ Guardando';
+  }
+
+  function guardarClausula(key){
+    const textarea = document.querySelector(`#content-${key} .clausula-editor`);
+    if(textarea) ediciones[key] = textarea.value;
+    renderPreview();
+  }
+
+  function cancelarEdicion(key){
+    renderPreview();
+  }
+
+  function restaurarClausula(key){
+    delete ediciones[key];
+    renderPreview();
+  }
+
+  function resetEdiciones(){
+    Object.keys(ediciones).forEach(k => delete ediciones[k]);
+    renderPreview();
+  }
 
   async function enviarContrato(){
     const btn = document.querySelector('.btn-send');

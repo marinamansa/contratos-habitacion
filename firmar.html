@@ -336,11 +336,56 @@ async function firmarDoc(tipo){
         });
         window.location.href = `ver.html?id=${id}`;
       } else {
+        // Generate downloadable PDFs for inquilino/avalista
+        const hoy = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+        const nombreCorto = (esInquilino ? d.tn : d.av_nombre).split(' ')[0].toLowerCase();
+        const btnStyle = 'display:block;margin:.5rem auto;padding:10px 20px;background:#1D9E75;color:white;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;width:fit-content';
+
+        // Fetch fresh data to get all signatures
+        const freshRes = await fetch(`${SUPABASE_URL}/rest/v1/contratos?id=eq.${id}`, {
+          headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+        });
+        const [fresh] = await freshRes.json();
+
+        let descargasHtml = '';
+
+        // Anexo (solo inquilino)
+        if(esInquilino){
+          try {
+            const r = await fetch('/.netlify/functions/generar-anexo', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ hnum: d.hnum, inquilino: d.tn, fecha: hoy, firma_inquilino: fresh.firma_anexo_inquilino, firma_arrendador: fresh.firma_anexo_arrendador })
+            });
+            const rd = await r.json();
+            if(rd.pdf) descargasHtml += `<a href="data:application/pdf;base64,${rd.pdf}" download="anexo-hab${d.hnum}-${nombreCorto}.pdf" style="${btnStyle}">⬇ Anexo habitación ${d.hnum}</a>`;
+          } catch(e){}
+        }
+
+        // LOPD (inquilino y avalista si hay seguro)
+        if(conSeguro){
+          try {
+            const r = await fetch('/.netlify/functions/generar-lopd', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({
+                cedente_nombre: d.an, cedente_nif: d.ad,
+                cesionario1_nombre: d.tn, cesionario1_nif: d.td,
+                cesionario2_nombre: conAvalista ? d.av_nombre : null,
+                cesionario2_nif: conAvalista ? d.av_dni : null,
+                firma_inquilino: fresh.firma_lopd_inquilino,
+                firma_avalista: fresh.firma_lopd_avalista
+              })
+            });
+            const rd = await r.json();
+            if(rd.pdf) descargasHtml += `<a href="data:application/pdf;base64,${rd.pdf}" download="lopd-${nombreCorto}.pdf" style="${btnStyle}">⬇ Autorización LOPD</a>`;
+          } catch(e){}
+        }
+
         document.getElementById('main').innerHTML = `
           <div class="card ya-firmado">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <h2>¡Todos tus documentos firmados!</h2>
             <p>Tus firmas han quedado registradas correctamente.</p>
+            ${descargasHtml ? `<div style="margin-top:1.5rem;border-top:1px solid #e0f2e9;padding-top:1.25rem">${descargasHtml}</div>` : ''}
           </div>`;
       }
     } else {

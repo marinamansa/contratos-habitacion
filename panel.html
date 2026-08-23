@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="icon" type="image/png" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Contratos">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de Contratos</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
+header{background:#1a1a1a;color:#fff;padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.header-left{display:flex;align-items:center;gap:.75rem}
+header h1{font-size:1rem;font-weight:500}
+.btn-nuevo{padding:7px 16px;font-size:13px;font-weight:600;background:#1D9E75;color:white;border:none;border-radius:7px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-nuevo:hover{background:#0F6E56}
+.page{max-width:1000px;margin:0 auto;padding:2rem 1.5rem 4rem}
+/* Filters */
+.filters{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:6px 14px;font-size:12px;font-weight:500;border:1px solid #ddd;background:#fff;border-radius:20px;cursor:pointer;color:#555;transition:all .15s}
+.filter-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.count-badge{font-size:11px;background:#f0f0f0;color:#888;padding:1px 6px;border-radius:10px;margin-left:4px}
+.filter-btn.active .count-badge{background:rgba(255,255,255,.2);color:rgba(255,255,255,.8)}
+.search-wrap{margin-left:auto}
+.search-wrap input{padding:6px 12px;font-size:13px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#1a1a1a;outline:none;width:200px}
+.search-wrap input:focus{border-color:#888}
+/* Cards */
+.contrato-card{background:#fff;border-radius:12px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:1rem;border-left:4px solid #e0e0e0;transition:box-shadow .15s}
+.contrato-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.contrato-card.activo{border-left-color:#1D9E75}
+.contrato-card.pendiente{border-left-color:#f59e0b}
+.contrato-card.vencido{border-left-color:#e5e7eb}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.card-title{display:flex;align-items:center;gap:.75rem}
+.hab-badge{background:#1a1a1a;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap}
+.inquilino-name{font-size:15px;font-weight:600;color:#1a1a1a}
+.inquilino-dni{font-size:11px;color:#888;margin-top:1px}
+.card-actions{display:flex;gap:.5rem;flex-shrink:0}
+.btn-ver{padding:5px 12px;font-size:12px;font-weight:500;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;color:#333;text-decoration:none;display:inline-block}
+.btn-ver:hover{background:#ebebeb}
+.btn-borrar{padding:5px 10px;font-size:12px;background:transparent;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;color:#dc2626}
+.btn-borrar:hover{background:#fef2f2}
+/* Data grid */
+.card-data{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.75rem;margin-bottom:1rem}
+.data-item label{display:block;font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.data-item span{font-size:13px;color:#1a1a1a;font-weight:500}
+.data-item span.highlight{color:#1D9E75}
+.data-item span.warn{color:#f59e0b}
+.data-item span.muted{color:#aaa}
+/* Firma status */
+.firmas-row{display:flex;gap:.5rem;flex-wrap:wrap}
+.firma-chip{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500}
+.firma-chip.ok{background:#dcfce7;color:#166534}
+.firma-chip.pendiente{background:#fef9c3;color:#854d0e}
+.firma-chip.na{background:#f3f4f6;color:#9ca3af}
+/* Empty state */
+.empty{text-align:center;padding:4rem 2rem;color:#aaa}
+.empty svg{width:48px;height:48px;margin-bottom:1rem;opacity:.3}
+.empty h2{font-size:16px;margin-bottom:.5rem;color:#ccc}
+/* Loading */
+.loading{text-align:center;padding:3rem;color:#aaa;font-size:14px}
+/* Stats bar */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:10px;padding:1rem 1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat-card .num{font-size:22px;font-weight:700;color:#1a1a1a}
+.stat-card .lbl{font-size:11px;color:#aaa;margin-top:2px}
+.stat-card.green .num{color:#1D9E75}
+.stat-card.amber .num{color:#f59e0b}
+@media(max-width:600px){
+  .stats-bar{grid-template-columns:1fr 1fr}
+  .card-data{grid-template-columns:1fr 1fr}
+  .search-wrap{margin-left:0;width:100%}
+  .search-wrap input{width:100%}
+  header{padding:1rem}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+    <h1>Panel de Contratos</h1>
+  </div>
+  <a href="index.html" class="btn-nuevo">+ Nuevo contrato</a>
+</header>
+
+<div class="page">
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-card"><div class="num" id="stat-total">—</div><div class="lbl">Total contratos</div></div>
+    <div class="stat-card green"><div class="num" id="stat-activos">—</div><div class="lbl">Activos</div></div>
+    <div class="stat-card amber"><div class="num" id="stat-pendientes">—</div><div class="lbl">Pendientes de firma</div></div>
+    <div class="stat-card"><div class="num" id="stat-vencidos">—</div><div class="lbl">Vencidos / Histórico</div></div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="todos" onclick="setFilter('todos',this)">Todos <span class="count-badge" id="cnt-todos">0</span></button>
+    <button class="filter-btn" data-filter="activo" onclick="setFilter('activo',this)">Activos <span class="count-badge" id="cnt-activo">0</span></button>
+    <button class="filter-btn" data-filter="pendiente" onclick="setFilter('pendiente',this)">Pendientes firma <span class="count-badge" id="cnt-pendiente">0</span></button>
+    <button class="filter-btn" data-filter="vencido" onclick="setFilter('vencido',this)">Histórico <span class="count-badge" id="cnt-vencido">0</span></button>
+    <div class="search-wrap">
+      <input type="text" id="search" placeholder="🔍 Buscar inquilino, habitación..." oninput="renderCards()">
+    </div>
+  </div>
+
+  <div id="cards"><div class="loading">Cargando contratos...</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kyrjqbautyklefhqzqbo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5cmpxYmF1dHlrbGVmaHF6cWJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDgwNjUsImV4cCI6MjA5NjY4NDA2NX0.EXBSK0ZLJUsWt1iQ8btA1FkQE_aPT_MFkdgEhkP4Gh0';
+
+let allContratos = [];
+let currentFilter = 'todos';
+
+async function init(){
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/contratos?order=created_at.desc&limit=200`, {
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+    });
+    allContratos = await res.json();
+    updateStats();
+    renderCards();
+  } catch(e){
+    document.getElementById('cards').innerHTML = '<div class="loading">Error al cargar los contratos.</div>';
+  }
+}
+
+function getEstado(c){
+  const d = c.datos;
+  const conSeguro = !!d.seguro;
+  const conAvalista = !!(d.avalista && d.av_nombre);
+  const hoy = new Date();
+  const fin = d.ff ? new Date(d.ff) : null;
+
+  // Signature completeness
+  const firmasBase = c.firma_inquilino && c.firma_arrendador && c.firma_anexo_inquilino && c.firma_anexo_arrendador;
+  const firmasSeguro = !conSeguro || (c.firma_lopd_inquilino && c.firma_lopd_arrendador);
+  const firmasAvalista = !conAvalista || (c.firma_avalista_contrato && (!conSeguro || c.firma_lopd_avalista));
+  const firmadoCompleto = firmasBase && firmasSeguro && firmasAvalista;
+
+  if(!firmadoCompleto) return 'pendiente';
+  if(fin && fin < hoy) return 'vencido';
+  return 'activo';
+}
+
+function diasRestantes(ff){
+  if(!ff) return null;
+  const fin = new Date(ff);
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  fin.setHours(0,0,0,0);
+  return Math.round((fin - hoy) / (1000*60*60*24));
+}
+
+function fmtDate(d){ return d ? new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—'; }
+function fmtDateStr(s){ if(!s) return '—'; const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; }
+
+function updateStats(){
+  const total = allContratos.length;
+  const activos = allContratos.filter(c => getEstado(c) === 'activo').length;
+  const pendientes = allContratos.filter(c => getEstado(c) === 'pendiente').length;
+  const vencidos = allContratos.filter(c => getEstado(c) === 'vencido').length;
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-activos').textContent = activos;
+  document.getElementById('stat-pendientes').textContent = pendientes;
+  document.getElementById('stat-vencidos').textContent = vencidos;
+
+  document.getElementById('cnt-todos').textContent = total;
+  document.getElementById('cnt-activo').textContent = activos;
+  document.getElementById('cnt-pendiente').textContent = pendientes;
+  document.getElementById('cnt-vencido').textContent = vencidos;
+}
+
+function setFilter(filter, btn){
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
+}
+
+function renderCards(){
+  const search = document.getElementById('search').value.toLowerCase();
+  let lista = allContratos.filter(c => {
+    const estado = getEstado(c);
+    if(currentFilter !== 'todos' && estado !== currentFilter) return false;
+    if(search){
+      const d = c.datos;
+      const haystack = `${d.tn} ${d.td} ${d.hnum} ${d.an} ${d.tdom}`.toLowerCase();
+      if(!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  if(!lista.length){
+    document.getElementById('cards').innerHTML = `
+      <div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <h2>No hay contratos</h2>
+        <p>No se encontraron contratos con ese filtro.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('cards').innerHTML = lista.map(c => contratoCard(c)).join('');
+}
+
+function contratoCard(c){
+  const d = c.datos;
+  const estado = getEstado(c);
+  const conSeguro = !!d.seguro;
+  const conAvalista = !!(d.avalista && d.av_nombre);
+  const dias = diasRestantes(d.ff);
+
+  // Dias label
+  let diasHtml = '—';
+  if(dias !== null){
+    if(dias > 0) diasHtml = `<span class="${dias < 30 ? 'warn' : 'highlight'}">${dias} días</span>`;
+    else if(dias === 0) diasHtml = `<span class="warn">Vence hoy</span>`;
+    else diasHtml = `<span class="muted">Vencido hace ${Math.abs(dias)}d</span>`;
+  }
+
+  // Estado label
+  const estadoLabels = {
+    activo: '🟢 Activo',
+    pendiente: '🟡 Pendiente firma',
+    vencido: '⚫ Histórico'
+  };
+
+  // Firmas chips
+  const chip = (label, ok, na=false) => na
+    ? `<span class="firma-chip na">— ${label}</span>`
+    : `<span class="firma-chip ${ok?'ok':'pendiente'}">${ok?'✓':'·'} ${label}</span>`;
+
+  const firmasHtml = [
+    chip('Inquilino', !!c.firma_inquilino),
+    chip('Avalista', !!c.firma_avalista_contrato, !conAvalista),
+    chip('Arrendador', !!c.firma_arrendador),
+    chip('Anexo inq.', !!c.firma_anexo_inquilino),
+    chip('Anexo arr.', !!c.firma_anexo_arrendador),
+    conSeguro ? chip('LOPD inq.', !!c.firma_lopd_inquilino) : '',
+    conSeguro && conAvalista ? chip('LOPD aval.', !!c.firma_lopd_avalista) : '',
+    conSeguro ? chip('LOPD arr.', !!c.firma_lopd_arrendador) : '',
+  ].filter(Boolean).join('');
+
+  return `
+  <div class="contrato-card ${estado}" id="card-${c.id}">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="hab-badge">HAB. ${d.hnum}</span>
+        <div>
+          <div class="inquilino-name">${d.tn}</div>
+          <div class="inquilino-dni">DNI ${d.td}${conAvalista ? ` · Avalista: ${d.av_nombre}` : ''}</div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <a href="ver.html?id=${c.id}" class="btn-ver">Ver docs →</a>
+        <button class="btn-borrar" onclick="borrarContrato('${c.id}', '${d.tn}')">🗑</button>
+      </div>
+    </div>
+
+    <div class="card-data">
+      <div class="data-item"><label>Estado</label><span>${estadoLabels[estado]}</span></div>
+      <div class="data-item"><label>Renta mensual</label><span class="highlight">${d.renta ? d.renta+'€' : '—'}</span></div>
+      <div class="data-item"><label>Fianza</label><span>${d.fianza ? d.fianza+'€' : '—'}</span></div>
+      <div class="data-item"><label>Inicio</label><span>${fmtDateStr(d.fi)}</span></div>
+      <div class="data-item"><label>Fin</label><span>${fmtDateStr(d.ff)}</span></div>
+      <div class="data-item"><label>Tiempo restante</label><span>${diasHtml}</span></div>
+      <div class="data-item"><label>Seguro impago</label><span>${conSeguro ? 'Sí' : 'No'}</span></div>
+      <div class="data-item"><label>Creado</label><span class="muted">${fmtDate(c.created_at)}</span></div>
+    </div>
+
+    <div class="firmas-row">${firmasHtml}</div>
+  </div>`;
+}
+
+async function borrarContrato(id, nombre){
+  if(!confirm(`¿Seguro que quieres eliminar el contrato de ${nombre}?\n\nEsta acción no se puede deshacer.`)) return;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/contratos?id=eq.${id}`, {
+      method: 'DELETE',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+    });
+    if(res.ok){
+      allContratos = allContratos.filter(c => c.id !== id);
+      document.getElementById(`card-${id}`)?.remove();
+      updateStats();
+      renderCards();
+    } else {
+      alert('Error al eliminar el contrato.');
+    }
+  } catch(e){ alert('Error al eliminar: ' + e.message); }
+}
+
+init();
+</script>
+</body>
+</html>
