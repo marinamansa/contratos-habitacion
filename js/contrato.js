@@ -23,12 +23,29 @@ function numHabitaciones(n){
   return map[parseInt(n)] || n;
 }
 
+function applyEdiciones(html, ediciones){
+  if(!ediciones || Object.keys(ediciones).length === 0) return html;
+  // Split on h2 tags same way as index.html does
+  const parts = html.split(/(?=<h2>)/);
+  return parts.map((part, i) => {
+    const key = part.match(/<h2>/) ? 'sec_' + i : (i === 0 ? 'sec_intro' : 'sec_' + i);
+    if(ediciones[key] !== undefined){
+      const h2match = part.match(/(<h2>.*?<\/h2>)/);
+      const h2 = h2match ? h2match[1] : '';
+      // edicion is plain text, wrap in paragraphs
+      const editedHtml = ediciones[key].split('\n').filter(l=>l.trim()).map(l=>`<p>${l}</p>`).join('');
+      return h2 + editedHtml;
+    }
+    return part;
+  }).join('');
+}
+
 function buildContrato(d){
   const hoy = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
   const conAvalista = d.avalista && d.av_nombre;
   const conSeguro = d.seguro;
 
-  return `
+  const _html = `
 <h1>CONTRATO DE ARRENDAMIENTO DE HABITACIÓN</h1>
 <p class="sub">Sometido al Código Civil</p>
 <p>En ${d.ciudad}, a ${hoy}</p>
@@ -124,4 +141,5 @@ ${conAvalista ? `<p>D. ${d.av_nombre}, con DNI ${d.av_dni}, se constituye en ava
 
 ${d.extra ? `<h2>CLÁUSULAS ADICIONALES</h2><p>${d.extra.replace(/\n/g,'</p><p>')}</p>` : ''}
 `;
+  return applyEdiciones(_html, d.ediciones);
 }
