@@ -352,12 +352,9 @@ async function firmarDoc(tipo){
         // Contrato (inquilino y avalista)
         const contratoHtml = buildContrato(d);
         const firmaInqHtml = fresh.firma_inquilino ? `<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid #eee;display:grid;grid-template-columns:1fr 1fr;gap:2rem"><div><p style="font-size:11px;font-weight:600;color:#555;margin-bottom:.5rem">Firma del arrendatario</p><img src="${fresh.firma_inquilino}" style="max-width:200px;border:1px solid #eee;border-radius:6px;padding:4px"></div>${fresh.firma_avalista_contrato ? `<div><p style="font-size:11px;font-weight:600;color:#555;margin-bottom:.5rem">Firma del avalista</p><img src="${fresh.firma_avalista_contrato}" style="max-width:200px;border:1px solid #eee;border-radius:6px;padding:4px"></div>` : ''}</div>` : '';
-        const contratoWindow = () => {
-          const w = window.open('','_blank');
-          w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Contrato</title><style>body{font-family:Georgia,serif;font-size:11.5px;line-height:1.8;color:#1a1a1a;margin:2cm}h1{font-size:13px;font-weight:700;text-align:center;margin-bottom:.4rem}h2{font-size:11.5px;font-weight:700;margin:1rem 0 .3rem;text-decoration:underline}p{margin-bottom:.5rem;text-align:justify}.sub{text-align:center;font-size:10.5px;color:#666;margin-bottom:1.25rem}@media print{body{margin:1.5cm}}</style></head><body>${contratoHtml}${firmaInqHtml}</body></html>`);
-          w.document.close(); w.focus(); setTimeout(()=>w.print(), 400);
-        };
-        descargasHtml += `<button onclick="(${contratoWindow.toString()})()" style="${btnStyle}">⬇ Contrato de arrendamiento</button>`;
+        // Store contrato data globally for the print function
+        window._contratoParaImprimir = contratoHtml + firmaInqHtml;
+        descargasHtml += `<button onclick="imprimirContrato()" style="${btnStyle}">⬇ Contrato de arrendamiento</button>`;
 
         // Anexo (solo inquilino)
         if(esInquilino){
@@ -406,6 +403,20 @@ async function firmarDoc(tipo){
     btn.disabled=false;
     btn.textContent = tipo==='contrato' ? 'Firmar contrato →' : tipo==='anexo' ? 'Firmar anexo →' : 'Firmar autorización →';
   }
+}
+
+function imprimirContrato(){
+  const contenido = window._contratoParaImprimir || '';
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Contrato</title><style>
+    body{font-family:Georgia,serif;font-size:11.5px;line-height:1.8;color:#1a1a1a;margin:2cm}
+    h1{font-size:13px;font-weight:700;text-align:center;margin-bottom:.4rem}
+    h2{font-size:11.5px;font-weight:700;margin:1rem 0 .3rem;text-decoration:underline}
+    p{margin-bottom:.5rem;text-align:justify}
+    .sub{text-align:center;font-size:10.5px;color:#666;margin-bottom:1.25rem}
+    @media print{body{margin:1.5cm}}
+  </style></head><body>${contenido}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(), 400);
 }
 
 function showStatus(tipo, type, msg){
