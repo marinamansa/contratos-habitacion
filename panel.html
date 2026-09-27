@@ -555,13 +555,37 @@ function cerrarEditor(){
   document.body.style.overflow = '';
 }
 
+// Map h2 titles to the semantic keys used in contrato.js cl()
+const CLAUSULA_KEY_MAP = {
+  'PRIMERA.- OBJETO Y DESTINO': 'primera',
+  'SEGUNDA.- DERECHO DE ACCESO A LA VIVIENDA DEL ARRENDADOR': 'segunda',
+  'TERCERA.- DURACIÓN, PRÓRROGAS Y FINALIZACIÓN DEL CONTRATO': 'tercera',
+  'CUARTA.- RENTA Y ACTUALIZACIÓN DE LA RENTA': 'cuarta',
+  'QUINTA.- GASTOS GENERALES': 'quinta',
+  'SEXTA.- SUMINISTROS': 'sexta',
+  'SÉPTIMA.- OBRAS Y REPARACIONES': 'septima',
+  'OCTAVA.- NORMAS DE CONVIVENCIA': 'octava',
+  'NOVENA.- MANTENIMIENTO, REPARACIONES Y SUSTITUCIONES': 'novena',
+  'DÉCIMA.- CONSUMIBLES Y UTENSILIOS DE LIMPIEZA': 'decima',
+  'DÉCIMO PRIMERA.- CESIÓN Y SUBARRIENDO': 'decimoprimera',
+  'DÉCIMO SEGUNDA.- DERECHO DE ADQUISICIÓN PREFERENTE': 'decimosegunda',
+  'DÉCIMO TERCERA.- FIANZA Y OTRAS GARANTÍAS ADICIONALES': 'decimotercera',
+  'DÉCIMO CUARTA.- AVALISTA SOLIDARIO': 'decimocuarta',
+  'DÉCIMO QUINTA.- DOMICILIO A EFECTO DE NOTIFICACIONES': 'decimoquinta',
+  'DÉCIMO SEXTA.- RÉGIMEN APLICABLE': 'decimosexta',
+  'DÉCIMO SÉPTIMA.- SOLUCIÓN DE CONFLICTOS': 'decimoseptima',
+  'DÉCIMO OCTAVA.- PROTECCIÓN DE DATOS': 'decimooctava',
+};
+
 function renderEditorContrato(){
   const html = buildContrato(DATOS_EJEMPLO);
   const parts = html.split(/(?=<h2>)/);
   const rendered = parts.map((part, i) => {
     if(!part.trim()) return '';
     const h2match = part.match(/<h2>(.*?)<\/h2>/);
-    const key = h2match ? 'sec_' + i : 'sec_intro';
+    // Use semantic key if it matches a known clause, else fallback to sec_N
+    const h2title = h2match ? h2match[1] : '';
+    const key = CLAUSULA_KEY_MAP[h2title] || (h2match ? 'sec_' + i : 'sec_intro');
     const isEdited = plantillaClausulas[key] !== undefined;
     const badge = isEdited ? '<span class="editada-badge-pl">editada</span>' : '';
     const originalContentHtml = part.replace(/<h2>.*?<\/h2>/, '');
