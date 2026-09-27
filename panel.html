@@ -76,10 +76,33 @@ header h1{font-size:1rem;font-weight:500}
 .data-item span.warn{color:#f59e0b}
 .data-item span.muted{color:#aaa}
 .firmas-row{display:flex;gap:.5rem;flex-wrap:wrap}
-.firma-chip{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500}
+.firma-chip{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;position:relative}
 .firma-chip.ok{background:#dcfce7;color:#166534}
-.firma-chip.pendiente{background:#fef9c3;color:#854d0e}
+.firma-chip.pendiente{background:#fef9c3;color:#854d0e;cursor:pointer}
+.firma-chip.pendiente:hover{background:#fef08a}
 .firma-chip.na{background:#f3f4f6;color:#9ca3af}
+/* Link tooltip for pending chips */
+.chip-link-popup{display:none;position:fixed;z-index:200;background:#1a1a1a;color:#fff;font-size:11px;border-radius:8px;padding:.6rem .75rem;box-shadow:0 4px 20px rgba(0,0,0,.25);max-width:320px;word-break:break-all}
+.chip-link-popup.visible{display:block}
+.chip-link-popup a{color:#86efac;font-size:10px;display:block;margin-bottom:.4rem;text-decoration:none;word-break:break-all}
+.chip-link-popup button{margin-top:.3rem;padding:4px 10px;font-size:11px;background:#1D9E75;color:#fff;border:none;border-radius:5px;cursor:pointer}
+.chip-link-popup .close-popup{background:transparent;border:none;color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;float:right;margin:-2px -2px 0 0}
+/* Extincion modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center}
+.modal-bg.visible{display:flex}
+.modal-box{background:#fff;border-radius:14px;padding:2rem;max-width:520px;width:calc(100% - 2rem);box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+.modal-box h3{font-size:15px;font-weight:700;margin-bottom:1.25rem}
+.modal-field{margin-bottom:.875rem}
+.modal-field label{display:block;font-size:11.5px;font-weight:600;color:#555;margin-bottom:4px}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;font-size:13px;padding:7px 10px;border-radius:7px;border:1px solid #e0e0e0;background:#fafafa;color:#1a1a1a;outline:none}
+.modal-field textarea{resize:vertical;min-height:60px}
+.modal-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;flex-wrap:wrap}
+.btn-modal-cancel{padding:8px 18px;font-size:13px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;color:#333}
+.btn-modal-extincion{padding:8px 18px;font-size:13px;font-weight:600;background:#dc2626;color:#fff;border:none;border-radius:7px;cursor:pointer}
+.btn-modal-extincion:disabled{background:#aaa;cursor:not-allowed}
+.btn-modal-pdf{padding:8px 18px;font-size:13px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:7px;cursor:pointer}
+.fianza-row{display:flex;gap:.75rem;align-items:flex-start}
+.fianza-row .modal-field{flex:1}
 .empty{text-align:center;padding:4rem 2rem;color:#aaa}
 .empty svg{width:48px;height:48px;margin-bottom:1rem;opacity:.3}
 .loading{text-align:center;padding:3rem;color:#aaa;font-size:14px}
@@ -116,6 +139,7 @@ header h1{font-size:1rem;font-weight:500}
   .search-wrap{margin-left:0;width:100%}
   .search-wrap input{width:100%}
   header{padding:1rem}
+  .card-actions{flex-wrap:wrap;gap:.35rem}
 }
 </style>
 </head>
@@ -162,6 +186,64 @@ header h1{font-size:1rem;font-weight:500}
   </div>
 
   <div id="cards"><div class="loading">Cargando contratos...</div></div>
+</div>
+
+<!-- Chip link popup -->
+<div class="chip-link-popup" id="chip-link-popup">
+  <button class="close-popup" onclick="cerrarLinkPopup()">✕</button>
+  <div style="font-weight:600;margin-bottom:.4rem;font-size:11px" id="chip-popup-label"></div>
+  <a id="chip-popup-link" href="#" target="_blank"></a>
+  <button onclick="copiarLinkChip()">📋 Copiar enlace</button>
+</div>
+
+<!-- Modal extinción -->
+<div class="modal-bg" id="modal-extincion">
+  <div class="modal-box">
+    <h3>✕ Extinguir contrato</h3>
+    <div class="modal-field">
+      <label>Inquilino</label>
+      <input type="text" id="ext-inquilino" readonly style="background:#f5f5f5;color:#666">
+    </div>
+    <div class="modal-field">
+      <label>Motivo de extinción</label>
+      <select id="ext-motivo">
+        <option value="fin_contrato">Finalización de contrato</option>
+        <option value="mutuo_acuerdo">Mutuo acuerdo</option>
+        <option value="impago">Impago de renta</option>
+        <option value="incumplimiento">Incumplimiento del contrato</option>
+        <option value="desistimiento">Desistimiento del arrendatario</option>
+        <option value="otro">Otro motivo</option>
+      </select>
+    </div>
+    <div class="modal-field" id="ext-motivo-otro-wrap" style="display:none">
+      <label>Especifica el motivo</label>
+      <input type="text" id="ext-motivo-otro" placeholder="Describe el motivo...">
+    </div>
+    <div class="modal-field">
+      <label>Fecha de extinción</label>
+      <input type="date" id="ext-fecha">
+    </div>
+    <div class="modal-field">
+      <label>Fianza depositada (€)</label>
+      <input type="number" id="ext-fianza-depositada" readonly style="background:#f5f5f5;color:#666">
+    </div>
+    <div class="modal-field">
+      <label>Importe a devolver (€) <span style="font-weight:400;color:#888;font-size:10px">— editable</span></label>
+      <input type="number" id="ext-fianza-devolver" min="0" step="0.01">
+    </div>
+    <div class="modal-field" id="ext-deduccion-wrap" style="display:none">
+      <label>Justificación de la deducción</label>
+      <textarea id="ext-deduccion-motivo" placeholder="Ej: Daños en la habitación, facturas pendientes..."></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Observaciones adicionales (opcional)</label>
+      <textarea id="ext-observaciones" placeholder="Cualquier nota adicional..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="cerrarExtincion()">Cancelar</button>
+      <button class="btn-modal-pdf" onclick="generarDocExtincion()" id="btn-generar-ext">📄 Generar documento</button>
+    </div>
+  </div>
 </div>
 
 <!-- Editor plantilla fullscreen -->
@@ -308,19 +390,26 @@ function contratoCard(c){
   }
 
   const estadoLabels = { activo:'🟢 Activo', pendiente:'🟡 Pendiente firma', vencido:'⚫ Histórico' };
-  const chip = (label, ok, na=false) => na
-    ? `<span class="firma-chip na">— ${label}</span>`
-    : `<span class="firma-chip ${ok?'ok':'pendiente'}">${ok?'✓':'·'} ${label}</span>`;
+  const siteBase = window.location.origin + window.location.pathname.replace('panel.html','');
+  const linkInq  = `${siteBase}firmar.html?id=${c.id}&rol=inquilino`;
+  const linkAval = `${siteBase}firmar.html?id=${c.id}&rol=avalista`;
+  const linkArr  = `${siteBase}firmar.html?id=${c.id}&rol=arrendador`;
+
+  const chip = (label, ok, na=false, link='') => {
+    if(na) return `<span class="firma-chip na">— ${label}</span>`;
+    if(ok) return `<span class="firma-chip ok">✓ ${label}</span>`;
+    return `<span class="firma-chip pendiente" onclick="mostrarLinkReenvio(event,'${link}','${label}')" title="Ver enlace de firma">· ${label} 🔗</span>`;
+  };
 
   const firmasHtml = [
-    chip('Inquilino', !!c.firma_inquilino),
-    chip('Avalista', !!c.firma_avalista_contrato, !conAvalista),
-    chip('Arrendador', !!c.firma_arrendador),
-    chip('Anexo inq.', !!c.firma_anexo_inquilino),
-    chip('Anexo arr.', !!c.firma_anexo_arrendador),
-    conSeguro ? chip('LOPD inq.', !!c.firma_lopd_inquilino) : '',
-    conSeguro && conAvalista ? chip('LOPD aval.', !!c.firma_lopd_avalista) : '',
-    conSeguro ? chip('LOPD arr.', !!c.firma_lopd_arrendador) : '',
+    chip('Inquilino',  !!c.firma_inquilino,          false, linkInq),
+    chip('Avalista',   !!c.firma_avalista_contrato,   !conAvalista, linkAval),
+    chip('Arrendador', !!c.firma_arrendador,          false, linkArr),
+    chip('Anexo inq.', !!c.firma_anexo_inquilino,     false, linkInq),
+    chip('Anexo arr.', !!c.firma_anexo_arrendador,    false, linkArr),
+    conSeguro ? chip('LOPD inq.',  !!c.firma_lopd_inquilino,  false, linkInq)  : '',
+    conSeguro && conAvalista ? chip('LOPD aval.', !!c.firma_lopd_avalista, false, linkAval) : '',
+    conSeguro ? chip('LOPD arr.',  !!c.firma_lopd_arrendador, false, linkArr)  : '',
   ].filter(Boolean).join('');
 
   return `
@@ -339,6 +428,8 @@ function contratoCard(c){
         </div>
         <div class="card-actions">
           <a href="ver.html?id=${c.id}" class="btn-ver">Ver docs →</a>
+          <button class="btn-ver" onclick="extenderContrato('${c.id}')">↪ Extender</button>
+          <button class="btn-ver" style="color:#dc2626;border-color:#fca5a5" onclick="abrirExtincion('${c.id}')">✕ Extinguir</button>
           <button class="btn-borrar" onclick="borrarContrato('${c.id}','${d.tn.replace(/'/g,"\\'")}')">🗑</button>
         </div>
       </div>
@@ -552,6 +643,218 @@ async function resetPlantilla(){
     document.getElementById('save-status').textContent = '✓ Restablecido';
     setTimeout(()=>{ document.getElementById('save-status').textContent=''; }, 3000);
   } catch(e){ document.getElementById('save-status').textContent = 'Error'; }
+}
+
+// ── RESEND LINK CHIP POPUP ────────────────────────────
+let _currentChipLink = '';
+
+function mostrarLinkReenvio(event, link, label){
+  event.stopPropagation();
+  _currentChipLink = link;
+  const popup = document.getElementById('chip-link-popup');
+  document.getElementById('chip-popup-label').textContent = `Enlace de firma — ${label}`;
+  const a = document.getElementById('chip-popup-link');
+  a.href = link;
+  a.textContent = link;
+  // Position popup near click
+  const x = Math.min(event.clientX, window.innerWidth - 340);
+  const y = Math.min(event.clientY + 10, window.innerHeight - 120);
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+  popup.classList.add('visible');
+}
+
+function cerrarLinkPopup(){
+  document.getElementById('chip-link-popup').classList.remove('visible');
+}
+
+function copiarLinkChip(){
+  navigator.clipboard.writeText(_currentChipLink).then(()=>{
+    const btn = document.querySelector('#chip-link-popup button:last-child');
+    btn.textContent = '✓ Copiado';
+    setTimeout(()=>{ btn.textContent = '📋 Copiar enlace'; }, 2000);
+  });
+}
+
+document.addEventListener('click', function(e){
+  const popup = document.getElementById('chip-link-popup');
+  if(popup.classList.contains('visible') && !popup.contains(e.target)){
+    cerrarLinkPopup();
+  }
+});
+
+// ── EXTENDER CONTRATO ────────────────────────────────
+function extenderContrato(id){
+  const c = allContratos.find(x => x.id === id);
+  if(!c) return;
+  const d = c.datos;
+  // Calculate next day after current end date
+  let newFi = '';
+  if(d.ff){
+    const fin = new Date(d.ff);
+    fin.setDate(fin.getDate() + 1);
+    newFi = fin.toISOString().slice(0,10);
+  }
+  const params = new URLSearchParams({
+    an: d.an || '', ad: d.ad || '', adom: d.adom || '', amail: d.amail || '', aiban: d.aiban || '',
+    tn: d.tn || '', td: d.td || '', tnac: d.tnac || '', tdom: d.tdom || '', tmail: d.tmail || '',
+    ciudad: d.ciudad || '', idir: d.idir || '', hnum: d.hnum || '', htot: d.htot || '',
+    fi: newFi, ff: '',
+    renta: d.renta || '', fianza: d.fianza || '', lsum: d.lsum || '50',
+    seguro: d.seguro ? 'true' : 'false',
+    avalista: (d.avalista && d.av_nombre) ? 'true' : 'false',
+    av_nombre: d.av_nombre || '', av_dni: d.av_dni || '',
+    extra: d.extra || ''
+  });
+  window.location.href = 'index.html?' + params.toString();
+}
+
+// ── EXTINGUIR CONTRATO ───────────────────────────────
+let _extContratoId = null;
+
+function abrirExtincion(id){
+  const c = allContratos.find(x => x.id === id);
+  if(!c) return;
+  _extContratoId = id;
+  const d = c.datos;
+
+  document.getElementById('ext-inquilino').value = `${d.tn} — HAB. ${d.hnum}`;
+  document.getElementById('ext-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ext-fianza-depositada').value = d.fianza || 0;
+  document.getElementById('ext-fianza-devolver').value = d.fianza || 0;
+  document.getElementById('ext-observaciones').value = '';
+  document.getElementById('ext-deduccion-motivo').value = '';
+  document.getElementById('ext-motivo').value = 'fin_contrato';
+  document.getElementById('ext-motivo-otro').value = '';
+  document.getElementById('ext-motivo-otro-wrap').style.display = 'none';
+  document.getElementById('ext-deduccion-wrap').style.display = 'none';
+  document.getElementById('btn-generar-ext').textContent = '📄 Generar documento';
+  document.getElementById('btn-generar-ext').disabled = false;
+
+  document.getElementById('modal-extincion').classList.add('visible');
+}
+
+function cerrarExtincion(){
+  document.getElementById('modal-extincion').classList.remove('visible');
+  _extContratoId = null;
+}
+
+document.getElementById('ext-motivo').addEventListener('change', function(){
+  document.getElementById('ext-motivo-otro-wrap').style.display = this.value === 'otro' ? 'block' : 'none';
+});
+
+document.getElementById('ext-fianza-devolver').addEventListener('input', function(){
+  const dep = parseFloat(document.getElementById('ext-fianza-depositada').value) || 0;
+  const dev = parseFloat(this.value) || 0;
+  document.getElementById('ext-deduccion-wrap').style.display = (dev < dep) ? 'block' : 'none';
+});
+
+async function generarDocExtincion(){
+  const c = allContratos.find(x => x.id === _extContratoId);
+  if(!c) return;
+  const d = c.datos;
+
+  const motivoSelect = document.getElementById('ext-motivo').value;
+  const motivoLabels = {
+    fin_contrato:'Finalización de contrato',
+    mutuo_acuerdo:'Mutuo acuerdo entre las partes',
+    impago:'Impago de renta',
+    incumplimiento:'Incumplimiento del contrato',
+    desistimiento:'Desistimiento del arrendatario',
+    otro: document.getElementById('ext-motivo-otro').value || 'Otro motivo'
+  };
+  const motivo = motivoLabels[motivoSelect];
+  const fechaExt = document.getElementById('ext-fecha').value;
+  const fianzaDep = parseFloat(document.getElementById('ext-fianza-depositada').value) || 0;
+  const fianzaDev = parseFloat(document.getElementById('ext-fianza-devolver').value) || 0;
+  const deduccion = fianzaDep - fianzaDev;
+  const deduccionMotivo = document.getElementById('ext-deduccion-motivo').value;
+  const observaciones = document.getElementById('ext-observaciones').value;
+
+  if(!fechaExt){ alert('Indica la fecha de extinción.'); return; }
+
+  const btn = document.getElementById('btn-generar-ext');
+  btn.disabled = true;
+  btn.textContent = 'Generando...';
+
+  try {
+    const fechaFmt = (s) => { const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; };
+    const numFmt = (n) => n.toFixed(2).replace('.',',');
+
+    // Build HTML document for printing/saving
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<title>Extinción de Contrato — ${d.tn}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,serif;font-size:11.5px;line-height:1.8;color:#1a1a1a;padding:3rem;max-width:700px;margin:0 auto}
+  h1{font-size:14px;font-weight:700;text-align:center;margin-bottom:.5rem;letter-spacing:.05em;text-transform:uppercase}
+  .sub{text-align:center;font-size:10.5px;color:#555;margin-bottom:2.5rem}
+  h2{font-size:11.5px;font-weight:700;margin:1.5rem 0 .4rem;text-decoration:underline}
+  p{margin-bottom:.6rem;text-align:justify}
+  .firma-block{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:3rem}
+  .firma-col{text-align:center}
+  .firma-line{border-top:1px solid #333;margin:2.5rem auto 0;width:80%}
+  .firma-label{font-size:10.5px;color:#555;margin-top:.3rem}
+  @media print{body{padding:2rem}}
+</style></head><body>
+<h1>Documento de Extinción de Contrato de Arrendamiento</h1>
+<div class="sub">Avenida da Universidade Nº 13, piso 2º Izq. (B), Ourense</div>
+
+<h2>REUNIDOS</h2>
+<p><strong>ARRENDADOR:</strong> D./Dña. ${d.an}, con DNI ${d.ad}, con domicilio a efectos de notificaciones en ${d.adom}.</p>
+<p><strong>ARRENDATARIO/A:</strong> D./Dña. ${d.tn}, con DNI ${d.td}, con domicilio a efectos de notificaciones en ${d.tdom || 'el inmueble arrendado'}.</p>
+${d.avalista && d.av_nombre ? `<p><strong>AVALISTA:</strong> D./Dña. ${d.av_nombre}, con DNI ${d.av_dni}.</p>` : ''}
+
+<h2>OBJETO</h2>
+<p>Las partes reunidas acuerdan la extinción del contrato de arrendamiento de habitación Nº ${d.hnum}, sita en ${d.idir}, ${d.ciudad}, suscrito en fecha ${fechaFmt(d.fi || '')}, con efectos a partir del día <strong>${fechaFmt(fechaExt)}</strong>.</p>
+
+<h2>MOTIVO</h2>
+<p>${motivo}.</p>
+
+<h2>LIQUIDACIÓN DE FIANZA</h2>
+<p>La fianza depositada en su día ascendía a <strong>${numFmt(fianzaDep)} €</strong>.</p>
+${deduccion > 0 ? `
+<p>Se acuerda deducir de la fianza la cantidad de <strong>${numFmt(deduccion)} €</strong> por el siguiente motivo: ${deduccionMotivo || 'según lo pactado entre las partes'}.</p>
+<p>El importe a devolver al arrendatario/a es de <strong>${numFmt(fianzaDev)} €</strong>.</p>
+` : `<p>Se acuerda devolver al arrendatario/a la totalidad de la fianza, por importe de <strong>${numFmt(fianzaDev)} €</strong>.</p>`}
+
+${observaciones ? `<h2>OBSERVACIONES</h2><p>${observaciones}</p>` : ''}
+
+<h2>ACUERDO</h2>
+<p>En prueba de conformidad con todo lo anterior, ambas partes firman el presente documento en ${d.ciudad}, a ${fechaFmt(fechaExt)}.</p>
+
+<div class="firma-block">
+  <div class="firma-col">
+    <div class="firma-line"></div>
+    <div class="firma-label">El Arrendador<br>${d.an}</div>
+  </div>
+  <div class="firma-col">
+    <div class="firma-line"></div>
+    <div class="firma-label">El/La Arrendatario/a<br>${d.tn}</div>
+  </div>
+</div>
+${d.avalista && d.av_nombre ? `
+<div class="firma-block" style="margin-top:2rem">
+  <div class="firma-col">
+    <div class="firma-line"></div>
+    <div class="firma-label">El/La Avalista<br>${d.av_nombre}</div>
+  </div>
+</div>` : ''}
+</body></html>`;
+
+    // Open in new window for printing/saving as PDF
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    setTimeout(()=>{ win.focus(); win.print(); }, 600);
+
+    btn.textContent = '✓ Documento generado';
+    setTimeout(()=>{ btn.textContent = '📄 Generar documento'; btn.disabled = false; }, 3000);
+  } catch(e){
+    alert('Error al generar el documento: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '📄 Generar documento';
+  }
 }
 
 init();
