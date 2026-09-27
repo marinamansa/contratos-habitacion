@@ -564,7 +564,11 @@ function renderEditorContrato(){
     const key = h2match ? 'sec_' + i : 'sec_intro';
     const isEdited = plantillaClausulas[key] !== undefined;
     const badge = isEdited ? '<span class="editada-badge-pl">editada</span>' : '';
-    const contentHtml = part.replace(/<h2>.*?<\/h2>/, '');
+    const originalContentHtml = part.replace(/<h2>.*?<\/h2>/, '');
+    // Show saved edited text if it exists, otherwise show original
+    const contentHtml = isEdited
+      ? plantillaClausulas[key].split('\n').map(l => l.trim() ? `<p>${l}</p>` : '').join('')
+      : originalContentHtml;
     return `<div class="clausula-wrap" data-key="${key}">
       <button class="btn-editar-cl" onclick="editarClausulaPlantilla('${key}',this)">${isEdited?'✓ Editando':'✏️ Editar'}</button>
       ${h2match ? `<h2>${h2match[1]}${badge}</h2>` : ''}
