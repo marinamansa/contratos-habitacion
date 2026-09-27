@@ -390,7 +390,7 @@ function contratoCard(c){
   }
 
   const estadoLabels = { activo:'🟢 Activo', pendiente:'🟡 Pendiente firma', vencido:'⚫ Histórico' };
-  const siteBase = window.location.origin + window.location.pathname.replace('panel.html','');
+  const siteBase = window.location.origin + '/';
   const linkInq  = `${siteBase}firmar.html?id=${c.id}&rol=inquilino`;
   const linkAval = `${siteBase}firmar.html?id=${c.id}&rol=avalista`;
   const linkArr  = `${siteBase}firmar.html?id=${c.id}&rol=arrendador`;
