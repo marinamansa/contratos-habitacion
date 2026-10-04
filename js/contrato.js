@@ -117,7 +117,7 @@ ${cl('segunda',`<p>Las partes acuerdan expresamente la renuncia del arrendatario
 ${cl('tercera',`<p>El presente contrato se acuerda por la temporada comprendida entre el ${fmtDate(d.fi)} y el ${fmtDate(d.ff)}.</p>
 <p>Llegada la fecha de finalización, en caso de que la parte arrendataria quisiese continuar deberá comunicárselo a la parte arrendadora con un mínimo de 7 días de antelación, debiendo formularse un nuevo contrato. En caso contrario la parte arrendataria devolverá la posesión del inmueble libre de ocupantes.</p>
 <p>El presente contrato no se prorrogará automáticamente en ningún caso.</p>
-<p>En caso de desistimiento anticipado, el arrendatario abonará una indemnización equivalente a la mensualidad completa hasta que termine el mes en curso.</p>
+<p>En caso de desistimiento anticipado, el arrendatario deberá comunicarlo con un mínimo de 30 días de antelación. De no respetarse dicho preaviso, abonará en concepto de indemnización una cantidad equivalente a una mensualidad de renta, con independencia de la mensualidad en curso.</p>
 <p>De no devolverse la posesión del inmueble en la fecha de vencimiento, las partes establecen una cláusula penal equivalente al doble de la renta mensual que se viniere devengando, calculada en atención al número de días o meses de retraso.</p>`)}
 
 <h2>CUARTA.- RENTA Y ACTUALIZACIÓN DE LA RENTA</h2>
