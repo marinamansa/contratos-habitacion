@@ -60,9 +60,12 @@ function applyEdiciones(html, ediciones){
 }
 
 // ── cl: get clause text (plantilla override → default) ──
+// Si el texto guardado contiene '___' (marcadores de datos dinámicos vacíos),
+// se ignora y se usa el defaultHtml con los datos reales del contrato.
 function cl(key, defaultHtml){
   const plantillaTexto = getPlantillaTexto(key);
   if(!plantillaTexto) return defaultHtml;
+  if(plantillaTexto.includes('___')) return defaultHtml;
   return plantillaTexto.split('\n').filter(l=>l.trim()).map(l=>`<p>${l}</p>`).join('');
 }
 
