@@ -147,7 +147,9 @@ header h1{font-size:1rem;font-weight:500}
 
 <header>
   <div class="header-left">
-    <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+    <a href="index.html" style="display:flex;align-items:center;text-decoration:none">
+      <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+    </a>
     <h1>Panel de Contratos</h1>
   </div>
   <div class="header-actions">
@@ -186,14 +188,6 @@ header h1{font-size:1rem;font-weight:500}
   </div>
 
   <div id="cards"><div class="loading">Cargando contratos...</div></div>
-</div>
-
-<!-- Chip link popup -->
-<div class="chip-link-popup" id="chip-link-popup">
-  <button class="close-popup" onclick="cerrarLinkPopup()">✕</button>
-  <div style="font-weight:600;margin-bottom:.4rem;font-size:11px" id="chip-popup-label"></div>
-  <a id="chip-popup-link" href="#" target="_blank"></a>
-  <button onclick="copiarLinkChip()">📋 Copiar enlace</button>
 </div>
 
 <!-- Modal extinción -->
@@ -398,7 +392,7 @@ function contratoCard(c){
   const chip = (label, ok, na=false, link='') => {
     if(na) return `<span class="firma-chip na">— ${label}</span>`;
     if(ok) return `<span class="firma-chip ok">✓ ${label}</span>`;
-    return `<span class="firma-chip pendiente" onclick="mostrarLinkReenvio(event,'${link}','${label}')" title="Ver enlace de firma">· ${label} 🔗</span>`;
+    return `<span class="firma-chip pendiente" onclick="abrirYCopiarLink('${link}','${label}',this)" title="Abrir enlace de firma">· ${label} 🔗</span>`;
   };
 
   const firmasHtml = [
@@ -673,43 +667,29 @@ async function resetPlantilla(){
   } catch(e){ document.getElementById('save-status').textContent = 'Error'; }
 }
 
-// ── RESEND LINK CHIP POPUP ────────────────────────────
-let _currentChipLink = '';
-
-function mostrarLinkReenvio(event, link, label){
-  event.stopPropagation();
-  _currentChipLink = link;
-  const popup = document.getElementById('chip-link-popup');
-  document.getElementById('chip-popup-label').textContent = `Enlace de firma — ${label}`;
-  const a = document.getElementById('chip-popup-link');
-  a.href = link;
-  a.textContent = link;
-  // Position popup near click
-  const x = Math.min(event.clientX, window.innerWidth - 340);
-  const y = Math.min(event.clientY + 10, window.innerHeight - 120);
-  popup.style.left = x + 'px';
-  popup.style.top = y + 'px';
-  popup.classList.add('visible');
+// ── CHIP: abrir enlace y copiar al portapapeles ──────
+function abrirYCopiarLink(link, label, chipEl){
+  // Copiar al portapapeles
+  navigator.clipboard.writeText(link).then(() => {
+    mostrarToast(`✓ Enlace copiado — ${label}`);
+  }).catch(() => {});
+  // Abrir en nueva pestaña
+  window.open(link, '_blank');
 }
 
-function cerrarLinkPopup(){
-  document.getElementById('chip-link-popup').classList.remove('visible');
-}
-
-function copiarLinkChip(){
-  navigator.clipboard.writeText(_currentChipLink).then(()=>{
-    const btn = document.querySelector('#chip-link-popup button:last-child');
-    btn.textContent = '✓ Copiado';
-    setTimeout(()=>{ btn.textContent = '📋 Copiar enlace'; }, 2000);
-  });
-}
-
-document.addEventListener('click', function(e){
-  const popup = document.getElementById('chip-link-popup');
-  if(popup.classList.contains('visible') && !popup.contains(e.target)){
-    cerrarLinkPopup();
+function mostrarToast(msg){
+  let toast = document.getElementById('copy-toast');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'copy-toast';
+    toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;font-size:12px;padding:.55rem 1.1rem;border-radius:20px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.25)';
+    document.body.appendChild(toast);
   }
-});
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+}
 
 // ── EXTENDER CONTRATO ────────────────────────────────
 function extenderContrato(id){
