@@ -59,13 +59,21 @@ function applyEdiciones(html, ediciones){
   }).join('');
 }
 
+// Cláusulas con datos dinámicos del contrato — si están guardadas en plantilla
+// con marcadores vacíos (___ o —), se usa el defaultHtml con datos reales.
+const DYNAMIC_KEYS = ['tercera','cuarta','sexta','decimotercera','decimocuarta','decimoquinta','decimoseptima'];
+
+function _hasMarcadores(texto){
+  // Detecta marcadores de datos vacíos: ___ o — suelto (sin letras adyacentes)
+  return texto.includes('___') || /(?<![a-záéíóúüñ])—(?![a-záéíóúüñ])/i.test(texto);
+}
+
 // ── cl: get clause text (plantilla override → default) ──
-// Si el texto guardado contiene '___' (marcadores de datos dinámicos vacíos),
-// se ignora y se usa el defaultHtml con los datos reales del contrato.
 function cl(key, defaultHtml){
   const plantillaTexto = getPlantillaTexto(key);
   if(!plantillaTexto) return defaultHtml;
-  if(plantillaTexto.includes('___')) return defaultHtml;
+  // Si es cláusula dinámica y tiene marcadores vacíos, usar el HTML dinámico
+  if(DYNAMIC_KEYS.includes(key) && _hasMarcadores(plantillaTexto)) return defaultHtml;
   return plantillaTexto.split('\n').filter(l=>l.trim()).map(l=>`<p>${l}</p>`).join('');
 }
 
