@@ -1,2 +1,11 @@
-[[plugins]]
-package = "@netlify/plugin-functions-install-core"
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions."avisos-vencimiento"]
+  # Runs daily at 09:00 Madrid time (07:00 UTC — midpoint between UTC+1 winter and UTC+2 summer)
+  schedule = "0 7 * * *"
+
+# Uncomment if you add node_modules to functions directory:
+# [functions]
+#   node_bundler = "esbuild"
