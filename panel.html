@@ -167,8 +167,8 @@ header h1{font-size:1rem;font-weight:500}
   </div>
 
   <div class="filters">
-    <button class="filter-btn active" onclick="setFilter('todos',this)">Todos <span class="count-badge" id="cnt-todos">0</span></button>
-    <button class="filter-btn" onclick="setFilter('activo',this)">Activos <span class="count-badge" id="cnt-activo">0</span></button>
+    <button class="filter-btn" onclick="setFilter('todos',this)">Todos <span class="count-badge" id="cnt-todos">0</span></button>
+    <button class="filter-btn active" onclick="setFilter('activo',this)">Activos <span class="count-badge" id="cnt-activo">0</span></button>
     <button class="filter-btn" onclick="setFilter('pendiente',this)">Pendientes firma <span class="count-badge" id="cnt-pendiente">0</span></button>
     <button class="filter-btn" onclick="setFilter('vencido',this)">Histórico <span class="count-badge" id="cnt-vencido">0</span></button>
     <div class="search-wrap">
@@ -267,7 +267,7 @@ const SUPABASE_URL = 'https://kyrjqbautyklefhqzqbo.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5cmpxYmF1dHlrbGVmaHF6cWJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDgwNjUsImV4cCI6MjA5NjY4NDA2NX0.EXBSK0ZLJUsWt1iQ8btA1FkQE_aPT_MFkdgEhkP4Gh0';
 
 let allContratos = [];
-let currentFilter = 'todos';
+let currentFilter = 'activo';
 let selectedIds = new Set();
 let plantillaClausulas = {};
 
