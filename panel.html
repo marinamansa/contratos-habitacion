@@ -140,6 +140,8 @@ header h1{font-size:1rem;font-weight:500}
   .search-wrap input{width:100%}
   header{padding:1rem}
   .card-actions{flex-wrap:wrap;gap:.35rem}
+  .card-actions .btn-ver:not(:first-child){font-size:11px;padding:4px 8px}
+  .btn-borrar{padding:4px 8px;font-size:11px}
 }
 </style>
 </head>
@@ -150,8 +152,13 @@ header h1{font-size:1rem;font-weight:500}
     <a href="index.html" style="display:flex;align-items:center;text-decoration:none">
       <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
     </a>
-    <h1>Panel de Contratos</h1>
+    <h1>Contratos <span style="font-size:10px;opacity:.45;letter-spacing:.05em">v3.0</span></h1>
   </div>
+  <nav style="display:flex;gap:.35rem;align-items:center">
+    <a href="panel.html" style="padding:6px 14px;font-size:12px;font-weight:500;background:#fff;color:#1a1a1a;border:1px solid #fff;border-radius:7px;text-decoration:none">Panel</a>
+    <a href="calendario.html" style="padding:6px 14px;font-size:12px;font-weight:500;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);border-radius:7px;text-decoration:none">Calendario</a>
+    <a href="dashboard.html" style="padding:6px 14px;font-size:12px;font-weight:500;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);border-radius:7px;text-decoration:none">Ingresos</a>
+  </nav>
   <div class="header-actions">
     <button class="btn-plantilla" onclick="abrirEditorPlantilla()">✏️ Editar contrato base</button>
     <a href="index.html" class="btn-nuevo">+ Nuevo contrato</a>

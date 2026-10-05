@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="icon" type="image/png" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Contratos">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard de Ingresos</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
+header{background:#1a1a1a;color:#fff;padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.header-left{display:flex;align-items:center;gap:.75rem}
+header h1{font-size:1rem;font-weight:500}
+.nav-tabs{display:flex;gap:.35rem;align-items:center}
+.nav-tab{padding:6px 14px;font-size:12px;font-weight:500;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);border-radius:7px;cursor:pointer;text-decoration:none;transition:all .15s}
+.nav-tab:hover{background:rgba(255,255,255,.18);color:#fff}
+.nav-tab.active{background:#fff;color:#1a1a1a;border-color:#fff}
+.page{max-width:1000px;margin:0 auto;padding:1.5rem 1.5rem 4rem}
+
+/* KPI strip */
+.kpi-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.kpi{background:#fff;border-radius:10px;padding:1rem 1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.kpi .val{font-size:22px;font-weight:700;color:#1a1a1a}
+.kpi .lbl{font-size:11px;color:#aaa;margin-top:2px}
+.kpi.green .val{color:#1D9E75}
+.kpi.amber .val{color:#f59e0b}
+.kpi.red .val{color:#dc2626}
+
+/* Year filter */
+.year-bar{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.year-bar label{font-size:13px;color:#555;font-weight:500}
+.year-select{padding:6px 12px;font-size:13px;border:1px solid #ddd;border-radius:7px;background:#fff;color:#1a1a1a;cursor:pointer;outline:none}
+.btn-add-cobro{margin-left:auto;padding:7px 16px;font-size:13px;font-weight:600;background:#1D9E75;color:white;border:none;border-radius:7px;cursor:pointer}
+.btn-add-cobro:hover{background:#0F6E56}
+
+/* Monthly bar chart */
+.chart-card{background:#fff;border-radius:12px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:1.5rem}
+.chart-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:1.25rem}
+.bar-chart{display:flex;align-items:flex-end;gap:.5rem;height:180px;border-bottom:2px solid #f0f0f0;padding-bottom:0}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.bar-col .bar-fill{width:100%;border-radius:5px 5px 0 0;background:#1D9E75;cursor:pointer;transition:opacity .15s;position:relative;min-height:2px}
+.bar-col .bar-fill:hover{opacity:.8}
+.bar-col .bar-fill.pending{background:#f3f4f6;border:2px dashed #d1d5db}
+.bar-col .bar-amount{font-size:9px;font-weight:600;color:#555;white-space:nowrap}
+.bar-col .bar-month{font-size:9.5px;color:#aaa;font-weight:500;margin-top:6px;white-space:nowrap}
+
+/* Per-room breakdown */
+.rooms-card{background:#fff;border-radius:12px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:1.5rem}
+.rooms-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:1rem}
+.room-row{display:flex;align-items:center;gap:1rem;margin-bottom:.75rem}
+.room-row:last-child{margin-bottom:0}
+.room-row .r-label{font-size:12px;font-weight:600;color:#555;width:60px;flex-shrink:0}
+.room-bar-wrap{flex:1;height:10px;background:#f0f0f0;border-radius:5px;overflow:hidden}
+.room-bar-fill{height:100%;background:#1D9E75;border-radius:5px;transition:width .4s}
+.room-row .r-val{font-size:12px;font-weight:600;color:#1a1a1a;width:70px;text-align:right;flex-shrink:0}
+
+/* Cobros table */
+.cobros-card{background:#fff;border-radius:12px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.cobros-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:.5rem}
+.cobros-sub{font-size:11.5px;color:#888;margin-bottom:1rem}
+.cobros-filters{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.cobro-filter-btn{padding:5px 12px;font-size:11.5px;font-weight:500;border:1px solid #ddd;background:#fff;border-radius:16px;cursor:pointer;color:#555;transition:all .15s}
+.cobro-filter-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.cobros-table{width:100%;border-collapse:collapse}
+.cobros-table th{font-size:10.5px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:.5rem .75rem;border-bottom:2px solid #f0f0f0}
+.cobros-table td{font-size:12.5px;padding:.6rem .75rem;border-bottom:1px solid #f5f5f5;color:#1a1a1a;vertical-align:middle}
+.cobros-table tr:last-child td{border-bottom:none}
+.cobros-table tr:hover td{background:#fafafa}
+.badge-pagado{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;background:#dcfce7;color:#166534}
+.badge-pendiente{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;background:#fef9c3;color:#854d0e}
+.btn-toggle-cobro{padding:4px 10px;font-size:11px;font-weight:500;border:1px solid #e0e0e0;border-radius:5px;cursor:pointer;background:#f5f5f5;color:#333}
+.btn-toggle-cobro:hover{background:#ebebeb}
+.btn-del-cobro{padding:4px 8px;font-size:11px;background:transparent;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:#dc2626;margin-left:.35rem}
+.btn-del-cobro:hover{background:#fef2f2}
+.empty-cobros{text-align:center;padding:2.5rem;color:#aaa;font-size:13px}
+
+/* Add cobro modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center}
+.modal-bg.visible{display:flex}
+.modal-box{background:#fff;border-radius:14px;padding:2rem;max-width:440px;width:calc(100%-2rem);box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-box h3{font-size:15px;font-weight:700;margin-bottom:1.25rem}
+.modal-field{margin-bottom:.875rem}
+.modal-field label{display:block;font-size:11.5px;font-weight:600;color:#555;margin-bottom:4px}
+.modal-field input,.modal-field select{width:100%;font-size:13px;padding:7px 10px;border-radius:7px;border:1px solid #e0e0e0;background:#fafafa;color:#1a1a1a;outline:none}
+.modal-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
+.btn-modal-cancel{padding:8px 18px;font-size:13px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;color:#333}
+.btn-modal-save{padding:8px 18px;font-size:13px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:7px;cursor:pointer}
+.btn-modal-save:disabled{background:#aaa;cursor:not-allowed}
+
+@media(max-width:600px){
+  .kpi-bar{grid-template-columns:1fr 1fr}
+  header{padding:1rem}
+  .nav-tab{padding:5px 10px;font-size:11px}
+  .bar-chart{height:120px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <a href="index.html" style="display:flex;align-items:center;text-decoration:none">
+      <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+    </a>
+    <h1>Contratos</h1>
+  </div>
+  <nav class="nav-tabs">
+    <a href="panel.html" class="nav-tab">Panel</a>
+    <a href="calendario.html" class="nav-tab">Calendario</a>
+    <a href="dashboard.html" class="nav-tab active">Ingresos</a>
+  </nav>
+</header>
+
+<div class="page">
+  <div class="kpi-bar">
+    <div class="kpi green"><div class="val" id="kpi-mes">—</div><div class="lbl">Ingresos este mes</div></div>
+    <div class="kpi"><div class="val" id="kpi-anual">—</div><div class="lbl">Ingresos año <span id="kpi-anio">—</span></div></div>
+    <div class="kpi amber"><div class="val" id="kpi-pendiente">—</div><div class="lbl">Pendiente de cobro</div></div>
+    <div class="kpi"><div class="val" id="kpi-activos">—</div><div class="lbl">Contratos activos</div></div>
+  </div>
+
+  <div class="year-bar">
+    <label>Año:</label>
+    <select class="year-select" id="year-select" onchange="cambiarAnio()"></select>
+    <button class="btn-add-cobro" onclick="abrirModalCobro()">+ Registrar cobro</button>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">Ingresos mensuales</div>
+    <div class="bar-chart" id="bar-chart">—</div>
+  </div>
+
+  <div class="rooms-card">
+    <div class="rooms-title">Ingresos por habitación (año seleccionado)</div>
+    <div id="rooms-chart">—</div>
+  </div>
+
+  <div class="cobros-card">
+    <div class="cobros-title">Gestión de cobros</div>
+    <div class="cobros-sub">Registra los pagos mensuales de cada contrato activo.</div>
+    <div class="cobros-filters">
+      <button class="cobro-filter-btn active" onclick="setCobroFilter('todos',this)">Todos</button>
+      <button class="cobro-filter-btn" onclick="setCobroFilter('pendiente',this)">Pendientes</button>
+      <button class="cobro-filter-btn" onclick="setCobroFilter('pagado',this)">Pagados</button>
+    </div>
+    <div id="cobros-list">Cargando...</div>
+  </div>
+</div>
+
+<!-- Modal añadir cobro -->
+<div class="modal-bg" id="modal-cobro">
+  <div class="modal-box">
+    <h3>Registrar cobro</h3>
+    <div class="modal-field">
+      <label>Contrato / Inquilino</label>
+      <select id="cobro-contrato"></select>
+    </div>
+    <div class="modal-field">
+      <label>Mes (YYYY-MM)</label>
+      <input type="month" id="cobro-mes">
+    </div>
+    <div class="modal-field">
+      <label>Importe (€)</label>
+      <input type="number" id="cobro-importe" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="modal-field">
+      <label>Estado</label>
+      <select id="cobro-pagado">
+        <option value="true">Pagado</option>
+        <option value="false">Pendiente</option>
+      </select>
+    </div>
+    <div class="modal-field" id="cobro-fecha-wrap">
+      <label>Fecha de pago</label>
+      <input type="date" id="cobro-fecha">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="cerrarModalCobro()">Cancelar</button>
+      <button class="btn-modal-save" id="btn-guardar-cobro" onclick="guardarCobro()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kyrjqbautyklefhqzqbo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5cmpxYmF1dHlrbGVmaHF6cWJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDgwNjUsImV4cCI6MjA5NjY4NDA2NX0.EXBSK0ZLJUsWt1iQ8btA1FkQE_aPT_MFkdgEhkP4Gh0';
+
+let allContratos = [];
+let allCobros = [];
+let selectedAnio = new Date().getFullYear();
+let cobroFilter = 'todos';
+
+function parseLocalDate(str){ if(!str) return null; const [y,m,d]=str.split('-'); return new Date(+y,+m-1,+d); }
+
+function getEstado(c){
+  const d = c.datos;
+  const conSeguro = !!d.seguro;
+  const conAvalista = !!(d.avalista && d.av_nombre);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const fin = parseLocalDate(d.ff);
+  const margen = new Date(hoy); margen.setDate(margen.getDate()-2);
+  if(fin && fin < margen) return 'vencido';
+  const firmasBase = c.firma_inquilino && c.firma_arrendador && c.firma_anexo_inquilino && c.firma_anexo_arrendador;
+  const firmasSeguro = !conSeguro || (c.firma_lopd_inquilino && c.firma_lopd_arrendador);
+  const firmasAvalista = !conAvalista || (c.firma_avalista_contrato && (!conSeguro || c.firma_lopd_avalista));
+  if(!(firmasBase && firmasSeguro && firmasAvalista)) return 'pendiente';
+  return 'activo';
+}
+
+async function sbFetch(path, opts={}){
+  const res = await fetch(SUPABASE_URL + path, {
+    ...opts,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...(opts.headers || {})
+    }
+  });
+  if(res.status === 204) return null;
+  return res.json();
+}
+
+async function loadData(){
+  const [contratos, cobros] = await Promise.all([
+    sbFetch('/rest/v1/contratos?select=*&order=created_at.desc'),
+    sbFetch('/rest/v1/cobros?select=*&order=mes.desc').catch(()=>[])
+  ]);
+  allContratos = contratos || [];
+  allCobros = cobros || [];
+}
+
+function getContratoActivos(){
+  return allContratos.filter(c => getEstado(c) === 'activo');
+}
+
+function calcKpis(){
+  const ahora = new Date();
+  const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}`;
+
+  // Expected monthly rent from active contracts
+  const activos = getContratoActivos();
+  const rentaMensual = activos.reduce((s,c) => s + (parseFloat(c.datos.renta)||0), 0);
+
+  // Income from cobros this month
+  const cobrosMes = allCobros.filter(cb => cb.mes === mesActual && cb.pagado);
+  const ingMes = cobrosMes.reduce((s,cb)=>s+(parseFloat(cb.importe)||0), 0);
+
+  // Annual cobros
+  const anioStr = String(selectedAnio);
+  const cobrosAnio = allCobros.filter(cb => cb.mes && cb.mes.startsWith(anioStr) && cb.pagado);
+  const ingAnio = cobrosAnio.reduce((s,cb)=>s+(parseFloat(cb.importe)||0), 0);
+
+  // Pending (all years)
+  const pendiente = allCobros.filter(cb => !cb.pagado).reduce((s,cb)=>s+(parseFloat(cb.importe)||0), 0);
+
+  document.getElementById('kpi-mes').textContent = ingMes > 0 ? fmt(ingMes) : fmt(rentaMensual) + '*';
+  document.getElementById('kpi-anual').textContent = fmt(ingAnio);
+  document.getElementById('kpi-anio').textContent = selectedAnio;
+  document.getElementById('kpi-pendiente').textContent = fmt(pendiente);
+  document.getElementById('kpi-activos').textContent = activos.length;
+}
+
+function fmt(n){ return (Math.round(n*100)/100).toLocaleString('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}); }
+
+function renderBarChart(){
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const data = Array(12).fill(0);
+  const hasCobros = Array(12).fill(false);
+
+  allCobros.forEach(cb => {
+    if(!cb.mes || !cb.mes.startsWith(String(selectedAnio))) return;
+    const m = parseInt(cb.mes.split('-')[1]) - 1;
+    if(cb.pagado) data[m] += parseFloat(cb.importe)||0;
+    hasCobros[m] = true;
+  });
+
+  // Expected from active contracts for months without cobros
+  const activos = getContratoActivos();
+  const rentaMensual = activos.reduce((s,c) => s + (parseFloat(c.datos.renta)||0), 0);
+
+  const maxVal = Math.max(...data, rentaMensual, 1);
+  const hoy = new Date();
+
+  let html = '';
+  for(let i=0;i<12;i++){
+    const mesKey = `${selectedAnio}-${String(i+1).padStart(2,'0')}`;
+    const isPast = new Date(selectedAnio, i+1, 0) < hoy;
+    const val = data[i];
+    const pct = Math.max((val / maxVal) * 100, 2);
+    const isPending = !hasCobros[i] && isPast;
+    const estPct = Math.max((rentaMensual / maxVal) * 100, 2);
+
+    html += `<div class="bar-col">
+      <div class="bar-amount">${val > 0 ? fmt(val) : (isPending ? '?' : '')}</div>
+      <div class="bar-fill ${isPending ? 'pending' : ''}" style="height:${isPending ? estPct : pct}%"></div>
+      <div class="bar-month">${meses[i]}</div>
+    </div>`;
+  }
+  document.getElementById('bar-chart').innerHTML = html;
+}
+
+function renderRoomsChart(){
+  const anioStr = String(selectedAnio);
+  const perRoom = {1:0, 2:0, 3:0, 4:0};
+
+  allCobros.forEach(cb => {
+    if(!cb.mes || !cb.mes.startsWith(anioStr) || !cb.pagado) return;
+    const c = allContratos.find(x => x.id === cb.contrato_id);
+    if(!c) return;
+    const hab = c.datos.hnum;
+    if(hab in perRoom) perRoom[hab] += parseFloat(cb.importe)||0;
+  });
+
+  const maxR = Math.max(...Object.values(perRoom), 1);
+  let html = '';
+  for(const h of [1,2,3,4]){
+    const pct = (perRoom[h] / maxR * 100).toFixed(1);
+    html += `<div class="room-row">
+      <div class="r-label">Hab. ${h}</div>
+      <div class="room-bar-wrap"><div class="room-bar-fill" style="width:${pct}%"></div></div>
+      <div class="r-val">${fmt(perRoom[h])}</div>
+    </div>`;
+  }
+  document.getElementById('rooms-chart').innerHTML = html;
+}
+
+function renderCobros(){
+  let cobros = [...allCobros];
+  if(cobroFilter === 'pendiente') cobros = cobros.filter(c => !c.pagado);
+  if(cobroFilter === 'pagado') cobros = cobros.filter(c => c.pagado);
+
+  // Sort: pending first, then by mes desc
+  cobros.sort((a,b) => {
+    if(a.pagado !== b.pagado) return a.pagado ? 1 : -1;
+    return b.mes.localeCompare(a.mes);
+  });
+
+  if(!cobros.length){
+    document.getElementById('cobros-list').innerHTML = '<div class="empty-cobros">No hay cobros registrados.</div>';
+    return;
+  }
+
+  const rows = cobros.map(cb => {
+    const c = allContratos.find(x => x.id === cb.contrato_id);
+    const nombre = c ? `Hab. ${c.datos.hnum} — ${c.datos.tn}` : cb.contrato_id;
+    const badge = cb.pagado
+      ? `<span class="badge-pagado">✓ Pagado</span>`
+      : `<span class="badge-pendiente">⏳ Pendiente</span>`;
+    const toggleLabel = cb.pagado ? 'Marcar pendiente' : 'Marcar pagado';
+    return `<tr>
+      <td>${cb.mes}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</td>
+      <td style="font-weight:600">${fmt(parseFloat(cb.importe)||0)}</td>
+      <td>${badge}</td>
+      <td>${cb.fecha_pago || '—'}</td>
+      <td>
+        <button class="btn-toggle-cobro" onclick="toggleCobro('${cb.id}',${!cb.pagado})">${toggleLabel}</button>
+        <button class="btn-del-cobro" onclick="borrarCobro('${cb.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('cobros-list').innerHTML = `
+    <table class="cobros-table">
+      <thead><tr>
+        <th>Mes</th><th>Contrato</th><th>Importe</th><th>Estado</th><th>Fecha pago</th><th>Acción</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function toggleCobro(id, pagado){
+  const fechaPago = pagado ? new Date().toISOString().slice(0,10) : null;
+  await sbFetch(`/rest/v1/cobros?id=eq.${id}`, {
+    method:'PATCH',
+    body: JSON.stringify({pagado, fecha_pago: fechaPago})
+  });
+  await loadData();
+  render();
+}
+
+async function borrarCobro(id){
+  if(!confirm('¿Eliminar este cobro?')) return;
+  await sbFetch(`/rest/v1/cobros?id=eq.${id}`, { method:'DELETE' });
+  await loadData();
+  render();
+}
+
+function setCobroFilter(f, btn){
+  cobroFilter = f;
+  document.querySelectorAll('.cobro-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCobros();
+}
+
+// Populate year selector
+function buildYearSelect(){
+  const años = new Set();
+  const ahora = new Date().getFullYear();
+  for(let y=ahora-2; y<=ahora+1; y++) años.add(y);
+  allCobros.forEach(cb => { if(cb.mes) años.add(parseInt(cb.mes.slice(0,4))); });
+  const sel = document.getElementById('year-select');
+  sel.innerHTML = [...años].sort((a,b)=>b-a).map(y =>
+    `<option value="${y}" ${y===selectedAnio?'selected':''}>${y}</option>`
+  ).join('');
+}
+
+function cambiarAnio(){
+  selectedAnio = parseInt(document.getElementById('year-select').value);
+  render();
+}
+
+function render(){
+  buildYearSelect();
+  calcKpis();
+  renderBarChart();
+  renderRoomsChart();
+  renderCobros();
+}
+
+// Modal cobro
+function abrirModalCobro(){
+  const activos = getContratoActivos();
+  const sel = document.getElementById('cobro-contrato');
+  sel.innerHTML = activos.map(c =>
+    `<option value="${c.id}">Hab. ${c.datos.hnum} — ${c.datos.tn} (${c.datos.renta}€)</option>`
+  ).join('') || '<option>Sin contratos activos</option>';
+
+  // Default mes = current month
+  const ahora = new Date();
+  document.getElementById('cobro-mes').value = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}`;
+
+  // Default importe = renta del primer contrato
+  if(activos.length) document.getElementById('cobro-importe').value = activos[0].datos.renta || '';
+
+  // Update importe when contrato changes
+  sel.onchange = () => {
+    const c = activos.find(x => x.id === sel.value);
+    if(c) document.getElementById('cobro-importe').value = c.datos.renta || '';
+  };
+
+  document.getElementById('cobro-pagado').value = 'true';
+  document.getElementById('cobro-fecha').value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('modal-cobro').classList.add('visible');
+}
+
+function cerrarModalCobro(){
+  document.getElementById('modal-cobro').classList.remove('visible');
+}
+
+async function guardarCobro(){
+  const btn = document.getElementById('btn-guardar-cobro');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  const contrato_id = document.getElementById('cobro-contrato').value;
+  const mes = document.getElementById('cobro-mes').value;
+  const importe = parseFloat(document.getElementById('cobro-importe').value) || 0;
+  const pagado = document.getElementById('cobro-pagado').value === 'true';
+  const fecha_pago = pagado ? (document.getElementById('cobro-fecha').value || null) : null;
+
+  if(!contrato_id || !mes || !importe){
+    alert('Rellena todos los campos'); btn.disabled=false; btn.textContent='Guardar'; return;
+  }
+
+  try {
+    await sbFetch('/rest/v1/cobros', {
+      method: 'POST',
+      body: JSON.stringify({ contrato_id, mes, importe, pagado, fecha_pago })
+    });
+    cerrarModalCobro();
+    await loadData();
+    render();
+  } catch(e){
+    alert('Error al guardar: ' + e.message);
+  }
+  btn.disabled=false; btn.textContent='Guardar';
+}
+
+async function init(){
+  try {
+    await loadData();
+  } catch(e){ console.error(e); }
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

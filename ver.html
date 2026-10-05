@@ -57,11 +57,14 @@ header h1{font-size:1rem;font-weight:500}
 <body>
 <header>
   <div class="header-left">
-    <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+    <a href="index.html" style="display:flex;align-items:center;text-decoration:none">
+      <img src="/icons/apple-touch-icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+    </a>
     <h1>Documentos Firmados</h1>
   </div>
   <button class="btn-print" onclick="window.print()">🖨 Imprimir</button>
 </header>
+
 
 <div class="page">
   <div id="main"><div class="card" style="text-align:center;padding:3rem;color:#888">Cargando documentos...</div></div>
@@ -97,10 +100,26 @@ async function genPdf(endpoint, body){
   return null;
 }
 
+// Convierte base64 a Blob URL y descarga — compatible con iOS Safari
+function descargarPdfBase64(base64, nombre){
+  try {
+    const bytes = atob(base64);
+    const arr = new Uint8Array(bytes.length);
+    for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+    const blob = new Blob([arr],{type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=nombre;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1000);
+  } catch(e){ console.error('Error descargando PDF',e); }
+}
+
 function pdfBlock(titulo, base64, nombreArchivo, embedHeight=480){
   const dataUrl = base64 ? `data:application/pdf;base64,${base64}` : null;
+  // Usamos button+onclick con Blob URL en lugar de <a href="data:..."> para compatibilidad iOS
   const downloadHtml = base64
-    ? `<a class="btn-descargar" href="${dataUrl}" download="${nombreArchivo}.pdf">⬇ Descargar PDF</a>`
+    ? `<button class="btn-descargar" onclick="descargarPdfBase64(_pdfs['${nombreArchivo}'],'${nombreArchivo}.pdf')">⬇ Descargar PDF</button>`
     : `<span style="font-size:12px;color:#aaa">PDF no disponible</span>`;
   const embedHtml = base64
     ? `<iframe class="pdf-embed" src="${dataUrl}" style="height:${embedHeight}px"></iframe>`
@@ -114,6 +133,9 @@ function pdfBlock(titulo, base64, nombreArchivo, embedHeight=480){
       ${embedHtml}
     </div>`;
 }
+
+// Almacén global de base64 para que los onclick puedan acceder
+const _pdfs = {};
 
 function firmaRow(label, firmaImg, nombre, dni, ts){
   return firmaImg
@@ -149,6 +171,10 @@ async function render(c){
   ]);
 
   const nombreInq = d.tn.split(' ')[0].toLowerCase();
+
+  // Guardar base64 en almacén global para que los botones puedan acceder
+  if(anexoB64) _pdfs[`anexo-hab${d.hnum}-${nombreInq}`] = anexoB64;
+  if(lopdB64)  _pdfs[`lopd-${nombreInq}`] = lopdB64;
 
   show(`
     ${todoFirmado ? `<div class="card" style="padding:1rem 1.5rem"><div class="badge-firmado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Todos los documentos firmados por ambas partes</div></div>` : ''}
