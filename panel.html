@@ -290,13 +290,19 @@ function getEstado(c){
   const d = c.datos;
   const conSeguro = !!d.seguro;
   const conAvalista = !!(d.avalista && d.av_nombre);
-  const hoy = new Date();
-  const fin = d.ff ? new Date(d.ff) : null;
+
+  // Comparar fechas en hora local (sin parte horaria) para evitar desfases UTC
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const fin = d.ff ? (() => { const [y,m,dia]=d.ff.split('-'); const f=new Date(+y,+m-1,+dia); return f; })() : null;
+
+  // Si la fecha de fin ya pasó hace más de 2 días → histórico, independientemente de las firmas
+  const margen = new Date(hoy); margen.setDate(margen.getDate() - 2);
+  if(fin && fin < margen) return 'vencido';
+
   const firmasBase = c.firma_inquilino && c.firma_arrendador && c.firma_anexo_inquilino && c.firma_anexo_arrendador;
   const firmasSeguro = !conSeguro || (c.firma_lopd_inquilino && c.firma_lopd_arrendador);
   const firmasAvalista = !conAvalista || (c.firma_avalista_contrato && (!conSeguro || c.firma_lopd_avalista));
   if(!(firmasBase && firmasSeguro && firmasAvalista)) return 'pendiente';
-  if(fin && fin < hoy) return 'vencido';
   return 'activo';
 }
 
